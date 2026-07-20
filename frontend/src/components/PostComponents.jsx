@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, Eye, BarChart2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
@@ -138,16 +138,22 @@ export function PostCard({ post, isRepost }) {
         <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
             <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
         </Link>
-        <div className="flex-grow">
-          <div className="flex items-center gap-1 mb-1 text-gray-900 dark:text-white flex-wrap">
-            <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer">{post.users?.display_name || post.users?.username}</Link>
-            <VerifiedBadge status={post.ai_status} />
-            {user?.id !== post.user_id && (
-                <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                </button>
-            )}
-            <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+        <div className="flex-grow min-w-0">
+          <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-gray-900 dark:text-white flex-wrap min-w-0">
+                <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer truncate">{post.users?.display_name || post.users?.username}</Link>
+                <VerifiedBadge status={post.ai_status} />
+                <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1 truncate">@{post.users?.username}</span>
+                <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+                {user?.id !== post.user_id && (
+                    <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
+                        {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                )}
+              </div>
+              <button className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition p-2 rounded-full hover:bg-blue-500/10">
+                 <CircleEllipsis size={18} />
+              </button>
           </div>
           <Link to={`/post/${post.id}`}>
              <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
@@ -161,22 +167,26 @@ export function PostCard({ post, isRepost }) {
             {(post.ai_status || 'pending').toUpperCase()}
           </div>
           
-          <div className="flex justify-between items-center mt-4 text-gray-500 dark:text-gray-400 max-w-md">
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-500 transition group">
+          <div className="flex justify-between items-center mt-3 text-gray-500 dark:text-gray-400 max-w-md w-full">
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-500 transition group flex-1">
                 <div className="p-2 rounded-full group-hover:bg-blue-500/10"><MessageCircle size={18} /></div>
                 <span className="text-sm">{commentCount > 0 ? commentCount : ''}</span>
             </button>
-            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-500 transition group ${reposted ? 'text-green-500' : ''}`}>
+            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-500 transition group flex-1 ${reposted ? 'text-green-500' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-green-500/10"><Share size={18} /></div>
                 <span className="text-sm">{repostCount > 0 ? repostCount : ''}</span>
             </button>
-            <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group ${liked ? 'text-pink-500' : ''}`}>
+            <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group flex-1 ${liked ? 'text-pink-500' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-pink-500/10"><Heart size={18} fill={liked ? "currentColor" : "none"} /></div>
                 <span className="text-sm">{likeCount > 0 ? likeCount : ''}</span>
             </button>
-            <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 cursor-default">
-                <div className="p-2 rounded-full"><Eye size={18} /></div>
+            <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 cursor-default flex-1 group hover:text-blue-500 transition">
+                <div className="p-2 rounded-full group-hover:bg-blue-500/10"><Eye size={18} /></div>
                 <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
+            </div>
+            <div className="flex items-center gap-1 justify-end flex-1">
+                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Bookmark size={18} /></button>
+                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Upload size={18} /></button>
             </div>
           </div>
 
@@ -187,48 +197,4 @@ export function PostCard({ post, isRepost }) {
   );
 }
 
-export function NewPost({ onPostSubmit }) {
-  const [content, setContent] = useState('');
-  const [file, setFile] = useState(null);
-  const fileInputRef = useRef(null);
-  const { user } = useAuth();
 
-  const handleSubmit = async () => {
-    if (!content.trim() && !file) return;
-    
-    const formData = new FormData();
-    formData.append("content", content);
-    if (file) formData.append("media", file);
-
-    try {
-      const data = await apiFetch('/api/v1/posts', {
-        method: 'POST',
-        // apiFetch automatically attaches the Bearer token!
-        body: formData
-      });
-      if (data.success && onPostSubmit) onPostSubmit();
-    } catch(err) { console.error("Failed to create post", err); }
-    
-    setContent(''); setFile(null);
-    if(fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  return (
-    <div className="border-b border-gray-800 p-4">
-      <div className="flex gap-4">
-        <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user?.email} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
-        <div className="flex-grow flex flex-col">
-          <textarea className="w-full bg-transparent text-xl outline-none resize-none placeholder-gray-500 min-h-[100px]" placeholder="What's happening?" value={content} onChange={(e) => setContent(e.target.value)} />
-          {file && <p className="text-sm text-blue-400 font-bold mt-2">Attached: {file.name}</p>}
-          <div className="border-t border-gray-800 pt-4 flex justify-between items-center mt-2">
-            <div>
-              <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={(e) => setFile(e.target.files[0])} />
-              <button onClick={() => fileInputRef.current?.click()} className="text-blue-400 hover:bg-gray-800 p-2 rounded-full"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></button>
-            </div>
-            <button onClick={handleSubmit} disabled={!content.trim() && !file} className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold py-2 px-6 rounded-full">Post</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

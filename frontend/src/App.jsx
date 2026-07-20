@@ -11,6 +11,11 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import TrendingPage from './pages/TrendingPage';
 import PostDetail from './pages/PostDetail';
+import Explore from './pages/Explore';
+import Bookmarks from './pages/Bookmarks';
+import Chat from './pages/Chat';
+import Studio from './pages/Studio';
+import Premium from './pages/Premium';
 
 // --- Protected Route Wrapper ---
 const ProtectedRoute = ({ children }) => {
@@ -38,9 +43,14 @@ export default function App() {
             {/* Protected Routes wrapped in Layout */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                <Route path="/" element={<Home />} />
+               <Route path="/explore" element={<Explore />} />
+               <Route path="/notifications" element={<Notifications />} />
+               <Route path="/chat" element={<Chat />} />
+               <Route path="/bookmarks" element={<Bookmarks />} />
+               <Route path="/premium" element={<Premium />} />
                <Route path="/profile" element={<Profile />} />
                <Route path="/profile/:id" element={<Profile />} />
-               <Route path="/notifications" element={<Notifications />} />
+               <Route path="/studio" element={<Studio />} />
                <Route path="/trending" element={<TrendingPage />} />
                <Route path="/post/:id" element={<PostDetail />} />
             </Route>

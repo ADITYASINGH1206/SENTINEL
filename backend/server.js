@@ -7,6 +7,7 @@ import postSocialRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import trendingRoutes from './routes/trendingRoutes.js';
+import newsRoutes from './routes/newsRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use('/api/v1/posts', postSocialRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/trending', trendingRoutes);
+app.use('/api/v1/news', newsRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

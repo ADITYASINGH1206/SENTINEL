@@ -1,0 +1,83 @@
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Search, Bell, Mail, Bookmark, MonitorPlay, Zap, User, CircleEllipsis, Feather } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import ThemeToggler from './ThemeToggler';
+
+export default function Sidebar() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [showLogout, setShowLogout] = useState(false);
+
+  const navItems = [
+    { name: 'Home', path: '/', icon: <Home size={26} /> },
+    { name: 'Explore', path: '/explore', icon: <Search size={26} /> },
+    { name: 'Notifications', path: '/notifications', icon: <Bell size={26} /> },
+    { name: 'Messages', path: '/chat', icon: <Mail size={26} /> },
+    { name: 'Bookmarks', path: '/bookmarks', icon: <Bookmark size={26} /> },
+    { name: 'Studio', path: '/studio', icon: <MonitorPlay size={26} /> },
+    { name: 'Premium', path: '/premium', icon: <Zap size={26} /> },
+    { name: 'Profile', path: '/profile', icon: <User size={26} /> },
+    { name: 'More', path: '#', icon: <CircleEllipsis size={26} /> }
+  ];
+
+  return (
+    <div className="w-20 sm:w-64 xl:w-72 h-screen fixed top-0 flex flex-col justify-between pt-2 pb-4 px-2 xl:px-4 border-r border-gray-200 dark:border-zinc-800">
+      <div className="flex flex-col items-center sm:items-start">
+        {/* Logo & Toggler */}
+        <div className="flex justify-between items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-900 rounded-full w-fit mb-2 transition cursor-pointer">
+          <span className="text-2xl font-bold text-blue-500 dark:text-blue-400">Sentinel</span>
+          <div className="ml-4 hidden sm:block"><ThemeToggler /></div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-col space-y-1 w-full items-center sm:items-start">
+          {navItems.map(item => {
+             const isActive = location.pathname === item.path;
+             return (
+               <Link 
+                  key={item.name} 
+                  to={item.path} 
+                  className={`flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-900 transition-colors w-fit ${isActive ? 'font-bold' : 'font-normal'}`}
+               >
+                 {item.icon}
+                 <span className="text-xl hidden sm:block">{item.name}</span>
+               </Link>
+             )
+          })}
+        </nav>
+
+        {/* Post Button */}
+        <button className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 px-8 rounded-full w-[90%] transition shadow-md hidden sm:block">
+          Post
+        </button>
+        <button className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold p-3 rounded-full w-12 h-12 flex items-center justify-center transition shadow-md sm:hidden">
+          <Feather size={24} />
+        </button>
+      </div>
+
+      {/* User Profile Card */}
+      {user && (
+        <div className="relative mt-auto w-full">
+            {showLogout && (
+               <div className="absolute bottom-16 left-0 w-full bg-white dark:bg-zinc-900 shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(255,255,255,0.05)] rounded-2xl p-2 border border-gray-100 dark:border-zinc-800 z-50">
+                  <button onClick={logout} className="w-full text-left font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 p-3 rounded-xl transition">
+                     Log out @{user?.user_metadata?.username || user?.email?.split('@')[0]}
+                  </button>
+               </div>
+            )}
+            <div className="flex items-center justify-center sm:justify-between p-3 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-900 transition cursor-pointer w-full group" onClick={() => setShowLogout(!showLogout)}>
+               <div className="flex items-center gap-3 min-w-0">
+                  <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user?.email} alt="Avatar" className="w-10 h-10 rounded-full bg-gray-300 dark:bg-zinc-700 flex-shrink-0" />
+                  <div className="hidden sm:flex flex-col leading-tight min-w-0">
+                     <span className="font-bold text-[15px] max-w-[120px] xl:max-w-[160px] truncate">{user?.user_metadata?.full_name || user?.email?.split('@')[0]}</span>
+                     <span className="text-gray-500 text-[15px] truncate">@{user?.user_metadata?.username || user?.email?.split('@')[0]}</span>
+                  </div>
+               </div>
+               <CircleEllipsis size={18} className="hidden sm:block text-gray-900 dark:text-white flex-shrink-0" />
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
