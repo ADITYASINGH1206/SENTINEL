@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import VerifiedBadge from './VerifiedBadge';
 import useIntersectionObserver from '../hooks/useIntersectionObserver';
+import { Web3Context } from '../context/Web3Context';
+import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export function CommentSection({ postId }) {
     const [comments, setComments] = useState([]);
@@ -59,6 +61,7 @@ export function CommentSection({ postId }) {
 
 export function PostCard({ post, isRepost }) {
   const { user } = useAuth();
+  const { trustScore, balance } = React.useContext(Web3Context);
   
   const initialLiked = post.likes?.some(l => l.user_id === user?.id) || false;
   const initialLikeCount = post.likes?.length || 0;
@@ -142,8 +145,18 @@ export function PostCard({ post, isRepost }) {
           <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1 text-gray-900 dark:text-white flex-wrap min-w-0">
                 <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer truncate">{post.users?.display_name || post.users?.username}</Link>
-                <VerifiedBadge status={post.ai_status} />
+                {post.ai_status === 'verified' && <ShieldCheck size={16} className="text-green-500 ml-1" />}
+                {post.ai_status === 'flagged' && <AlertTriangle size={16} className="text-red-500 ml-1" />}
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1 truncate">@{post.users?.username}</span>
+                
+                {/* Web3 Trust Badges */}
+                <span className="ml-2 text-xs bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20 font-medium">
+                   Trust: {trustScore}
+                </span>
+                <span className="ml-1 text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full border border-blue-500/20 font-medium">
+                   {balance} SNTL
+                </span>
+
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
                 {user?.id !== post.user_id && (
                     <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { Web3Provider } from './context/Web3Context';
 
 import AppLayout from './components/AppLayout';
 import Login from './pages/Login';
@@ -36,25 +37,27 @@ export default function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          
-            {/* Protected Routes wrapped in Layout */}
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-               <Route path="/" element={<Home />} />
-               <Route path="/explore" element={<Explore />} />
-               <Route path="/notifications" element={<Notifications />} />
-               <Route path="/chat" element={<Chat />} />
-               <Route path="/bookmarks" element={<Bookmarks />} />
-               <Route path="/premium" element={<Premium />} />
-               <Route path="/profile" element={<Profile />} />
-               <Route path="/profile/:id" element={<Profile />} />
-               <Route path="/studio" element={<Studio />} />
-               <Route path="/trending" element={<TrendingPage />} />
-               <Route path="/post/:id" element={<PostDetail />} />
-            </Route>
-          </Routes>
+          <Web3Provider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            
+              {/* Protected Routes wrapped in Layout */}
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                 <Route path="/" element={<Home />} />
+                 <Route path="/explore" element={<Explore />} />
+                 <Route path="/notifications" element={<Notifications />} />
+                 <Route path="/chat" element={<Chat />} />
+                 <Route path="/bookmarks" element={<Bookmarks />} />
+                 <Route path="/premium" element={<Premium />} />
+                 <Route path="/profile" element={<Profile />} />
+                 <Route path="/profile/:id" element={<Profile />} />
+                 <Route path="/studio" element={<Studio />} />
+                 <Route path="/trending" element={<TrendingPage />} />
+                 <Route path="/post/:id" element={<PostDetail />} />
+              </Route>
+            </Routes>
+          </Web3Provider>
         </AuthProvider>
       </ThemeProvider>
     </Router>

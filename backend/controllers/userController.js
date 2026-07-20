@@ -79,6 +79,60 @@ export const getSocialCounts = async (req, res) => {
     }
 };
 
+export const getFollowers = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        // Get all follower IDs
+        const { data: followsData, error: followsError } = await supabase
+            .from('follows')
+            .select('follower_id')
+            .eq('following_id', userId);
+            
+        if (followsError) throw followsError;
+        if (!followsData || followsData.length === 0) return res.json({ success: true, users: [] });
+
+        const followerIds = followsData.map(f => f.follower_id);
+        
+        // Get user details
+        const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, bio')
+            .in('id', followerIds);
+            
+        if (usersError) throw usersError;
+        res.json({ success: true, users: usersData });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const getFollowing = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        // Get all following IDs
+        const { data: followsData, error: followsError } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', userId);
+            
+        if (followsError) throw followsError;
+        if (!followsData || followsData.length === 0) return res.json({ success: true, users: [] });
+
+        const followingIds = followsData.map(f => f.following_id);
+        
+        // Get user details
+        const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, bio')
+            .in('id', followingIds);
+            
+        if (usersError) throw usersError;
+        res.json({ success: true, users: usersData });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 export const getUserProfile = async (req, res) => {
     try {
         const { data, error } = await supabase.from('users').select('*').eq('id', req.params.id).single();

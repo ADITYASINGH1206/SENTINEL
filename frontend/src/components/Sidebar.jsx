@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Bell, Mail, Bookmark, MonitorPlay, Zap, User, CircleEllipsis, Feather } from 'lucide-react';
+import { Home, Search, Bell, Mail, Bookmark, MonitorPlay, Zap, User, CircleEllipsis, Feather, Wallet, Coins } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Web3Context } from '../context/Web3Context';
 import ThemeToggler from './ThemeToggler';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { account, balance, hasClaimedAirdrop, isConnecting, connectWallet, claimAirdrop } = React.useContext(Web3Context);
   const location = useLocation();
   const [showLogout, setShowLogout] = useState(false);
 
@@ -47,10 +49,38 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Post Button */}
-        <button className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 px-8 rounded-full w-[90%] transition shadow-md hidden sm:block">
-          Post
-        </button>
+        {/* Web3 Action Area */}
+        <div className="w-[90%] mt-4 space-y-3 hidden sm:block">
+           {!account ? (
+               <button onClick={connectWallet} disabled={isConnecting} className="w-full bg-zinc-900 dark:bg-white text-white dark:text-black font-bold py-3.5 px-4 rounded-full transition shadow-md flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50">
+                   <Wallet size={20} />
+                   {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+               </button>
+           ) : (
+               <div className="w-full bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-3 flex flex-col gap-2">
+                   <div className="flex justify-between items-center text-sm">
+                       <span className="text-gray-500 font-medium">Wallet</span>
+                       <span className="font-bold text-gray-900 dark:text-white bg-gray-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-sm">
+                       <span className="text-gray-500 font-medium">Balance</span>
+                       <span className="font-bold text-blue-500 flex items-center gap-1"><Coins size={14}/> {balance} $SNTL</span>
+                   </div>
+                   {!hasClaimedAirdrop && (
+                       <button onClick={claimAirdrop} disabled={isConnecting} className="w-full mt-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-2 rounded-xl transition text-sm disabled:opacity-50 shadow-sm animate-pulse hover:animate-none">
+                           {isConnecting ? 'Claiming...' : 'Claim 500 $SNTL'}
+                       </button>
+                   )}
+               </div>
+           )}
+           
+           {/* Post Button */}
+           <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 px-8 rounded-full transition shadow-md">
+             Post
+           </button>
+        </div>
+
+        {/* Mobile Post Button */}
         <button className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold p-3 rounded-full w-12 h-12 flex items-center justify-center transition shadow-md sm:hidden">
           <Feather size={24} />
         </button>
