@@ -1,11 +1,12 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://mock.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'mock-key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const verifyToken = async (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -33,5 +34,3 @@ const verifyToken = async (req, res, next) => {
         res.status(500).json({ error: 'Internal server error during authentication' });
     }
 };
-
-module.exports = { verifyToken };

@@ -1,7 +1,7 @@
-const express = require('express');
-const router = express.Router();
-const { verifyToken } = require('../middleware/authMiddleware');
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
 
+const router = express.Router();
 // Mock data storage for hackathon testing
 let likesDB = [];
 let commentsDB = [];
@@ -85,4 +85,4 @@ router.post('/:id/share', verifyToken, async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

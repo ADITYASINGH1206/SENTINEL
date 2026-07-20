@@ -10,3 +10,4 @@ cache/
 typechain-types/
 dist/
 build/
+secret.json

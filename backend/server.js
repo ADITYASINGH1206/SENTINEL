@@ -1,17 +1,18 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const axios = require('axios');
-const FormData = require('form-data');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+import axios from 'axios';
+import FormData from 'form-data';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const { processWeb3Transaction } = require('./services/web3Relayer');
+import { processWeb3Transaction } from './services/web3Relayer.js';
+import postSocialRoutes from './routes/postRoutes.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const postSocialRoutes = require('./routes/postRoutes');
 app.use('/api/v1/posts', postSocialRoutes);
 
 // Set up multer for multipart/form-data
