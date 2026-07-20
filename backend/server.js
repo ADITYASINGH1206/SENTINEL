@@ -11,6 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const postSocialRoutes = require('./routes/postRoutes');
+app.use('/api/v1/posts', postSocialRoutes);
+
 // Set up multer for multipart/form-data
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
