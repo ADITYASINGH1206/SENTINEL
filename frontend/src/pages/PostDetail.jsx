@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PostCard, CommentSection } from '../components/PostComponents';
+import { apiFetch } from '../services/api';
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -10,10 +11,11 @@ export default function PostDetail() {
   useEffect(() => {
     const fetchPost = async () => {
        try {
-           const res = await fetch(`http://localhost:8000/api/v1/posts`); // Using mock list endpoint
-           const data = await res.json();
-           const found = data.find(p => p.id.toString() === id);
-           setPost(found);
+           const data = await apiFetch('/api/v1/posts'); 
+           if (data.success) {
+               const found = data.posts.find(p => p.id.toString() === id);
+               setPost(found);
+           }
        } catch(err) {
            console.error(err);
        }
@@ -50,14 +52,17 @@ export default function PostDetail() {
           </h3>
           <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
              <div className="flex justify-between items-center mb-2">
-                 <span className="text-gray-400">Confidence Score:</span>
-                 <span className="font-bold text-green-400">92%</span>
+                 <span className="text-gray-400">Status:</span>
+                 <span className="font-bold text-green-400">{post.ai_status.toUpperCase()}</span>
              </div>
-             <div className="flex justify-between items-center mb-4">
-                 <span className="text-gray-400">Visual Artifacts:</span>
-                 <span className="font-bold">None detected</span>
-             </div>
-             <p className="text-sm text-gray-500 italic">"The media passed all heuristic threshold checks. No deepfake blending anomalies found."</p>
+             <p className="text-sm text-gray-500 italic mt-4">
+                 {post.ai_status === 'verified' 
+                    ? '"The media passed all heuristic threshold checks. No deepfake blending anomalies found."'
+                    : post.ai_status === 'flagged' 
+                    ? '"Warning: Significant visual artifacts and audio splicing detected. Highly likely to be synthesized media."'
+                    : '"Analysis is currently pending via the AI Orchestrator..."'
+                 }
+             </p>
           </div>
       </div>
 

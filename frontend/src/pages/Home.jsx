@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { NewPost, PostCard } from '../components/PostComponents';
+import { apiFetch } from '../services/api';
 
 export default function Home() {
   const [posts, setPosts] = useState([]);
 
   const fetchPosts = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/posts');
-      const data = await res.json();
-      setPosts(data);
+      const data = await apiFetch('/api/v1/posts');
+      if (data.success) setPosts(data.posts);
     } catch(err) {
-      console.error(err);
+      console.error('Error fetching feed:', err);
     }
   };
 
   useEffect(() => {
     fetchPosts();
-    const intervalId = setInterval(fetchPosts, 3000); // Polling for hackathon mockup
+    // Use interval to simulate realtime updates for the hackathon
+    const intervalId = setInterval(fetchPosts, 3000); 
     return () => clearInterval(intervalId);
   }, []);
 

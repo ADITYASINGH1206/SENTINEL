@@ -12,7 +12,7 @@ function SidebarLeft() {
         <nav className="flex flex-col space-y-2 flex-grow">
           <Link to="/" className="text-xl font-semibold hover:bg-gray-800 rounded-full py-3 px-4 transition-colors">Home</Link>
           <Link to="/profile" className="text-xl font-semibold hover:bg-gray-800 rounded-full py-3 px-4 transition-colors">Profile</Link>
-          <a href="#" className="text-xl font-semibold hover:bg-gray-800 rounded-full py-3 px-4 transition-colors">Notifications</a>
+          <Link to="/notifications" className="text-xl font-semibold hover:bg-gray-800 rounded-full py-3 px-4 transition-colors">Notifications</Link>
           <button onClick={logout} className="text-xl font-semibold text-left text-red-400 hover:bg-gray-800 rounded-full py-3 px-4 transition-colors">Logout</button>
         </nav>
       </div>

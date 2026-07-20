@@ -2,24 +2,52 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Share, BarChart2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { apiFetch } from '../services/api';
+import VerifiedBadge from './VerifiedBadge';
 
 export function CommentSection({ postId }) {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
-    const { user } = useAuth();
 
     useEffect(() => {
-        // Stub: Fetch comments logic using fetch API and JWT
-    }, [postId, user]);
+        const fetchComments = async () => {
+            try {
+                const data = await apiFetch(`/api/v1/posts/${postId}/comments`);
+                if (data.success) setComments(data.comments);
+            } catch (err) {
+                console.error('Failed to fetch comments', err);
+            }
+        };
+        fetchComments();
+    }, [postId]);
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
-        // Stub: Post comment logic
+        try {
+            const data = await apiFetch(`/api/v1/posts/${postId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newComment })
+            });
+            if (data.success) {
+                setComments([...comments, data.comment]);
+                setNewComment('');
+            }
+        } catch (err) { console.error('Failed to post comment', err); }
     };
 
     return (
         <div className="mt-4 border-t border-gray-800 pt-4 px-2">
             {comments.length === 0 && <p className="text-sm text-gray-500">No comments yet.</p>}
+            {comments.map(c => (
+                <div key={c.id} className="mb-3 flex gap-3">
+                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + c.users?.username} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
+                    <div>
+                        <span className="font-bold text-sm">{c.users?.display_name || c.users?.username}</span>
+                        <p className="text-gray-300 text-sm">{c.content}</p>
+                    </div>
+                </div>
+            ))}
             <div className="flex gap-2 mt-3">
                 <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-800 p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent" />
                 <button onClick={handleAddComment} className="bg-blue-500 px-4 rounded-full text-sm font-bold">Reply</button>
@@ -28,16 +56,45 @@ export function CommentSection({ postId }) {
     );
 }
 
-export function PostCard({ post }) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 50));
-  const [shared, setShared] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+export function PostCard({ post, isRepost }) {
   const { user } = useAuth();
+  
+  const initialLiked = post.likes?.some(l => l.user_id === user?.id) || false;
+  const initialLikeCount = post.likes?.length || 0;
+  const commentCount = post.comments?.length || 0;
+  
+  const initialReposted = post.reposts?.some(r => r.user_id === user?.id) || false;
+  const initialRepostCount = post.reposts?.length || 0;
+
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [reposted, setReposted] = useState(initialReposted);
+  const [repostCount, setRepostCount] = useState(initialRepostCount);
+  const [showComments, setShowComments] = useState(false);
 
   const handleLike = async () => {
       setLiked(!liked);
       setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+      try {
+          await apiFetch(`/api/v1/posts/${post.id}/like`, { method: 'POST' });
+      } catch (err) {
+          // Revert optimistic update
+          setLiked(!liked);
+          setLikeCount(liked ? likeCount + 1 : likeCount - 1);
+          console.error("Failed to like post", err);
+      }
+  };
+
+  const handleRepost = async () => {
+      setReposted(!reposted);
+      setRepostCount(reposted ? repostCount - 1 : repostCount + 1);
+      try {
+          await apiFetch(`/api/v1/posts/${post.id}/repost`, { method: 'POST' });
+      } catch (err) {
+          setReposted(!reposted);
+          setRepostCount(reposted ? repostCount + 1 : repostCount - 1);
+          console.error("Failed to repost", err);
+      }
   };
 
   const badgeStyles = {
@@ -48,12 +105,20 @@ export function PostCard({ post }) {
 
   return (
     <div className="border-b border-gray-800 p-4 hover:bg-gray-800/30 transition-colors">
+      {isRepost && (
+          <div className="text-sm text-gray-500 flex items-center gap-2 mb-2 ml-10 font-bold">
+              <Share size={14} /> Reposted
+          </div>
+      )}
       <div className="flex gap-4">
-        <img src={post.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.handle} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
+        <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
+            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full hover:opacity-80 transition" />
+        </Link>
         <div className="flex-grow">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-bold hover:underline cursor-pointer">{post.handle || 'User'}</span>
-            <span className="text-gray-500 text-sm">· 2h</span>
+          <div className="flex items-center gap-1 mb-1">
+            <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer">{post.users?.display_name || post.users?.username}</Link>
+            <VerifiedBadge status={post.ai_status} />
+            <span className="text-gray-500 text-sm ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
           </div>
           <Link to={`/post/${post.id}`}>
              <p className="mb-3 text-[15px]">{post.content}</p>
@@ -63,16 +128,18 @@ export function PostCard({ post }) {
                  <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
               </div>
           )}
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.status || 'pending']}`}>
-            {(post.status || 'pending').toUpperCase()}
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
+            {(post.ai_status || 'pending').toUpperCase()}
           </div>
           
           <div className="flex justify-between items-center mt-4 text-gray-500 max-w-md">
             <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-400 transition group">
                 <div className="p-2 rounded-full group-hover:bg-blue-400/10"><MessageCircle size={18} /></div>
+                <span className="text-sm">{commentCount > 0 ? commentCount : ''}</span>
             </button>
-            <button onClick={()=>setShared(!shared)} className={`flex items-center gap-2 hover:text-green-400 transition group ${shared ? 'text-green-400' : ''}`}>
+            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-400 transition group ${reposted ? 'text-green-400' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-green-400/10"><Share size={18} /></div>
+                <span className="text-sm">{repostCount > 0 ? repostCount : ''}</span>
             </button>
             <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group ${liked ? 'text-pink-500' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-pink-500/10"><Heart size={18} fill={liked ? "currentColor" : "none"} /></div>
@@ -101,18 +168,16 @@ export function NewPost({ onPostSubmit }) {
     
     const formData = new FormData();
     formData.append("content", content);
-    formData.append("walletAddress", user?.email || "Unknown"); 
     if (file) formData.append("media", file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/posts', {
+      const data = await apiFetch('/api/v1/posts', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${user?.token}` }, 
+        // apiFetch automatically attaches the Bearer token!
         body: formData
       });
-      const data = await response.json();
       if (data.success && onPostSubmit) onPostSubmit();
-    } catch(err) { console.error(err); }
+    } catch(err) { console.error("Failed to create post", err); }
     
     setContent(''); setFile(null);
     if(fileInputRef.current) fileInputRef.current.value = "";

@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
 import PostDetail from './pages/PostDetail';
 
 // --- Protected Route Wrapper ---
@@ -35,6 +36,8 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
              <Route path="/" element={<Home />} />
              <Route path="/profile" element={<Profile />} />
+             <Route path="/profile/:id" element={<Profile />} />
+             <Route path="/notifications" element={<Notifications />} />
              <Route path="/post/:id" element={<PostDetail />} />
           </Route>
         </Routes>
