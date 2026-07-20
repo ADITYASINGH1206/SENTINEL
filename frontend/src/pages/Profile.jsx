@@ -1,0 +1,182 @@
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { PostCard } from '../components/PostComponents';
+import { apiFetch } from '../services/api';
+
+export default function Profile() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const profileId = id || user?.id;
+  const isOwnProfile = profileId === user?.id;
+  
+  const [activeTab, setActiveTab] = useState('posts');
+  const [profileUser, setProfileUser] = useState(null);
+  
+  const [myPosts, setMyPosts] = useState([]);
+  const [reposts, setReposts] = useState([]);
+  
+  const [socialCounts, setSocialCounts] = useState({ followers: 0, following: 0 });
+  const [isFollowing, setIsFollowing] = useState(false);
+  
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ bio: '', avatar_url: '', cover_url: '', wallet_address: '' });
+
+  // Fetch Profile Info & Counts
+  useEffect(() => {
+      const fetchData = async () => {
+          if (!profileId) return;
+          try {
+              // Get User Info
+              const userRes = await apiFetch(`/api/v1/users/${profileId}`);
+              if (userRes.success) setProfileUser(userRes.user);
+
+              // Get Social Counts
+              const countsRes = await apiFetch(`/api/v1/users/${profileId}/social-counts`);
+              if (countsRes.success) {
+                  setSocialCounts({ followers: countsRes.followers, following: countsRes.following });
+              }
+
+              // Get Posts & Reposts
+              const postsRes = await apiFetch('/api/v1/posts');
+              if (postsRes.success) {
+                  const authored = postsRes.posts.filter(p => p.user_id === profileId);
+                  const reposted = postsRes.posts.filter(p => p.reposts && p.reposts.some(r => r.user_id === profileId));
+                  setMyPosts(authored);
+                  setReposts(reposted);
+              }
+          } catch(err) {
+              console.error(err);
+          }
+      };
+      fetchData();
+  }, [profileId]);
+
+  const handleFollowToggle = async () => {
+      try {
+          const res = await apiFetch(`/api/v1/users/${profileId}/follow`, { method: 'POST' });
+          if (res.success) {
+              setIsFollowing(res.action === 'followed');
+              setSocialCounts(prev => ({
+                  ...prev, 
+                  followers: res.action === 'followed' ? prev.followers + 1 : prev.followers - 1
+              }));
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
+
+  const handleEditSave = async () => {
+      try {
+          const res = await apiFetch('/api/v1/users/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(editForm)
+          });
+          if (res.success) {
+              setProfileUser(res.user);
+              setShowEditModal(false);
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
+
+  if (!profileUser) {
+      return (
+         <div className="w-full min-h-screen p-8">
+             <div className="h-48 bg-gray-800 animate-pulse rounded-xl mb-4"></div>
+             <div className="h-20 w-20 rounded-full bg-gray-700 animate-pulse -mt-10 ml-4"></div>
+         </div>
+      );
+  }
+
+  return (
+    <div className="w-full min-h-screen">
+      <div className="sticky top-0 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 z-10 flex justify-between items-center">
+        <h1 className="text-xl font-bold">{profileUser.display_name || profileUser.username}</h1>
+      </div>
+      
+      {/* Sleek Profile Header */}
+      <div className="relative border-b border-gray-800 pb-4">
+         <div className="h-48 w-full bg-gray-800">
+             {profileUser.cover_url && <img src={profileUser.cover_url} className="w-full h-full object-cover" alt="Cover" />}
+         </div>
+         
+         <div className="px-4 flex justify-between items-start">
+             <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + profileUser.username} alt="Avatar" className="w-32 h-32 bg-gray-900 rounded-full border-4 border-gray-900 -mt-16 relative" />
+             <div className="mt-4">
+                 {isOwnProfile ? (
+                     <button onClick={() => { setEditForm(profileUser); setShowEditModal(true); }} className="border border-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-full transition">Edit Profile</button>
+                 ) : (
+                     <button onClick={handleFollowToggle} className={`${isFollowing ? 'border border-gray-600 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500' : 'bg-white text-black hover:bg-gray-200'} font-bold py-2 px-6 rounded-full transition`}>
+                         {isFollowing ? 'Following' : 'Follow'}
+                     </button>
+                 )}
+             </div>
+         </div>
+         
+         <div className="px-4 mt-2">
+             <h2 className="text-2xl font-bold">{profileUser.display_name || profileUser.username}</h2>
+             <p className="text-gray-500 mb-2">@{profileUser.username}</p>
+             {profileUser.bio && <p className="mb-3">{profileUser.bio}</p>}
+             
+             {profileUser.wallet_address && (
+                 <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
+                     <span className="font-mono bg-gray-800 px-2 py-1 rounded">{profileUser.wallet_address.slice(0,6)}...{profileUser.wallet_address.slice(-4)}</span>
+                 </div>
+             )}
+             
+             <div className="flex gap-4 text-sm text-gray-500">
+                 <span className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.following}</strong> Following</span>
+                 <span className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.followers}</strong> Followers</span>
+             </div>
+         </div>
+      </div>
+
+      <div className="flex border-b border-gray-800">
+          <button onClick={()=>setActiveTab('posts')} className={`flex-1 py-4 font-bold text-center hover:bg-gray-800 transition ${activeTab==='posts' ? 'border-b-2 border-blue-500 text-white' : 'text-gray-500'}`}>Posts</button>
+          <button onClick={()=>setActiveTab('reposts')} className={`flex-1 py-4 font-bold text-center hover:bg-gray-800 transition ${activeTab==='reposts' ? 'border-b-2 border-blue-500 text-white' : 'text-gray-500'}`}>Reposts</button>
+      </div>
+
+      <div className="pb-20">
+         {activeTab === 'posts' ? (
+             myPosts.length > 0 ? myPosts.map(p => <PostCard key={p.id} post={p} />) : <div className="p-8 text-center text-gray-500">No posts yet.</div>
+         ) : (
+             reposts.length > 0 ? reposts.map(p => <PostCard key={p.id} post={p} isRepost />) : <div className="p-8 text-center text-gray-500">No reposts yet.</div>
+         )}
+      </div>
+
+      {showEditModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+              <div className="bg-gray-900 p-6 rounded-xl w-full max-w-lg shadow-2xl border border-gray-700">
+                  <h3 className="text-xl font-bold mb-4">Edit Profile</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-sm text-gray-400">Bio</label>
+                          <textarea className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent" value={editForm.bio || ''} onChange={e=>setEditForm({...editForm, bio: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="text-sm text-gray-400">Wallet Address</label>
+                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent font-mono text-sm" value={editForm.wallet_address || ''} onChange={e=>setEditForm({...editForm, wallet_address: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="text-sm text-gray-400">Avatar Image URL</label>
+                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.avatar_url || ''} onChange={e=>setEditForm({...editForm, avatar_url: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="text-sm text-gray-400">Cover Image URL</label>
+                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.cover_url || ''} onChange={e=>setEditForm({...editForm, cover_url: e.target.value})} />
+                      </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                      <button onClick={()=>setShowEditModal(false)} className="flex-1 border border-gray-600 hover:bg-gray-800 font-bold py-2 rounded transition">Cancel</button>
+                      <button onClick={handleEditSave} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-2 rounded transition">Save</button>
+                  </div>
+              </div>
+          </div>
+      )}
+    </div>
+  );
+}

@@ -1,9 +1,9 @@
-const { ethers } = require('ethers');
+import { ethers } from 'ethers';
 
 /**
  * Scaffolding for interacting with the SentinelRegistry smart contract using Ethers.js
  */
-const processWeb3Transaction = async (walletAddress, verificationStatus) => {
+export const processWeb3Transaction = async (walletAddress, verificationStatus) => {
     try {
         console.log(`[Web3 Relayer] Preparing transaction for ${walletAddress}`);
 
@@ -28,5 +28,3 @@ const processWeb3Transaction = async (walletAddress, verificationStatus) => {
         console.error(`[Web3 Relayer] Failed to process transaction:`, error);
     }
 };
-
-module.exports = { processWeb3Transaction };
