@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, BarChart2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import VerifiedBadge from './VerifiedBadge';
+import useIntersectionObserver from '../hooks/useIntersectionObserver';
+import { Web3Context } from '../context/Web3Context';
+import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export function CommentSection({ postId }) {
     const [comments, setComments] = useState([]);
@@ -58,6 +61,7 @@ export function CommentSection({ postId }) {
 
 export function PostCard({ post, isRepost }) {
   const { user } = useAuth();
+  const { trustScore, balance } = React.useContext(Web3Context);
   
   const initialLiked = post.likes?.some(l => l.user_id === user?.id) || false;
   const initialLikeCount = post.likes?.length || 0;
@@ -70,7 +74,20 @@ export function PostCard({ post, isRepost }) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [reposted, setReposted] = useState(initialReposted);
   const [repostCount, setRepostCount] = useState(initialRepostCount);
+  const [impressions, setImpressions] = useState(post.impressions_count || 0);
   const [showComments, setShowComments] = useState(false);
+  const [hasTracked, setHasTracked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const [targetRef, isIntersecting] = useIntersectionObserver({ threshold: 0.5 });
+
+  useEffect(() => {
+      if (isIntersecting && !hasTracked) {
+          setHasTracked(true);
+          setImpressions(prev => prev + 1);
+          apiFetch(`/api/v1/posts/${post.id}/impression`, { method: 'POST' }).catch(console.error);
+      }
+  }, [isIntersecting, hasTracked, post.id]);
 
   const handleLike = async () => {
       setLiked(!liked);
@@ -97,6 +114,16 @@ export function PostCard({ post, isRepost }) {
       }
   };
 
+  const handleFollow = async (e) => {
+      e.preventDefault(); // Prevent navigating to profile if wrapped in link
+      setIsFollowing(!isFollowing);
+      try {
+          await apiFetch(`/api/v1/users/${post.user_id}/follow`, { method: 'POST' });
+      } catch (err) {
+          setIsFollowing(!isFollowing);
+      }
+  };
+
   const badgeStyles = {
       pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
       verified: 'bg-green-500/20 text-green-400 border-green-500/50',
@@ -104,27 +131,48 @@ export function PostCard({ post, isRepost }) {
   };
 
   return (
-    <div className="border-b border-gray-800 p-4 hover:bg-gray-800/30 transition-colors">
+    <div ref={targetRef} className="border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
       {isRepost && (
-          <div className="text-sm text-gray-500 flex items-center gap-2 mb-2 ml-10 font-bold">
+          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-2 ml-10 font-bold">
               <Share size={14} /> Reposted
           </div>
       )}
       <div className="flex gap-4">
         <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
-            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full hover:opacity-80 transition" />
+            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
         </Link>
-        <div className="flex-grow">
-          <div className="flex items-center gap-1 mb-1">
-            <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer">{post.users?.display_name || post.users?.username}</Link>
-            <VerifiedBadge status={post.ai_status} />
-            <span className="text-gray-500 text-sm ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+        <div className="flex-grow min-w-0">
+          <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-gray-900 dark:text-white flex-wrap min-w-0">
+                <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer truncate">{post.users?.display_name || post.users?.username}</Link>
+                {post.ai_status === 'verified' && <ShieldCheck size={16} className="text-green-500 ml-1" />}
+                {post.ai_status === 'flagged' && <AlertTriangle size={16} className="text-red-500 ml-1" />}
+                <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1 truncate">@{post.users?.username}</span>
+                
+                {/* Web3 Trust Badges */}
+                <span className="ml-2 text-xs bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20 font-medium">
+                   Trust: {trustScore}
+                </span>
+                <span className="ml-1 text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full border border-blue-500/20 font-medium">
+                   {balance} SNTL
+                </span>
+
+                <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+                {user?.id !== post.user_id && (
+                    <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
+                        {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                )}
+              </div>
+              <button className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition p-2 rounded-full hover:bg-blue-500/10">
+                 <CircleEllipsis size={18} />
+              </button>
           </div>
           <Link to={`/post/${post.id}`}>
-             <p className="mb-3 text-[15px]">{post.content}</p>
+             <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
           </Link>
           {post.media_url && (
-              <div className="mb-3 w-full h-48 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
+              <div className="mb-3 w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
                  <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
               </div>
           )}
@@ -132,22 +180,27 @@ export function PostCard({ post, isRepost }) {
             {(post.ai_status || 'pending').toUpperCase()}
           </div>
           
-          <div className="flex justify-between items-center mt-4 text-gray-500 max-w-md">
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-400 transition group">
-                <div className="p-2 rounded-full group-hover:bg-blue-400/10"><MessageCircle size={18} /></div>
+          <div className="flex justify-between items-center mt-3 text-gray-500 dark:text-gray-400 max-w-md w-full">
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-500 transition group flex-1">
+                <div className="p-2 rounded-full group-hover:bg-blue-500/10"><MessageCircle size={18} /></div>
                 <span className="text-sm">{commentCount > 0 ? commentCount : ''}</span>
             </button>
-            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-400 transition group ${reposted ? 'text-green-400' : ''}`}>
-                <div className="p-2 rounded-full group-hover:bg-green-400/10"><Share size={18} /></div>
+            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-500 transition group flex-1 ${reposted ? 'text-green-500' : ''}`}>
+                <div className="p-2 rounded-full group-hover:bg-green-500/10"><Share size={18} /></div>
                 <span className="text-sm">{repostCount > 0 ? repostCount : ''}</span>
             </button>
-            <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group ${liked ? 'text-pink-500' : ''}`}>
+            <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group flex-1 ${liked ? 'text-pink-500' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-pink-500/10"><Heart size={18} fill={liked ? "currentColor" : "none"} /></div>
-                <span className="text-sm">{likeCount}</span>
+                <span className="text-sm">{likeCount > 0 ? likeCount : ''}</span>
             </button>
-            <button className="flex items-center gap-2 hover:text-blue-400 transition group">
-                <div className="p-2 rounded-full group-hover:bg-blue-400/10"><BarChart2 size={18} /></div>
-            </button>
+            <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 cursor-default flex-1 group hover:text-blue-500 transition">
+                <div className="p-2 rounded-full group-hover:bg-blue-500/10"><Eye size={18} /></div>
+                <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
+            </div>
+            <div className="flex items-center gap-1 justify-end flex-1">
+                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Bookmark size={18} /></button>
+                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Upload size={18} /></button>
+            </div>
           </div>
 
           {showComments && <CommentSection postId={post.id} />}
@@ -157,48 +210,4 @@ export function PostCard({ post, isRepost }) {
   );
 }
 
-export function NewPost({ onPostSubmit }) {
-  const [content, setContent] = useState('');
-  const [file, setFile] = useState(null);
-  const fileInputRef = useRef(null);
-  const { user } = useAuth();
 
-  const handleSubmit = async () => {
-    if (!content.trim() && !file) return;
-    
-    const formData = new FormData();
-    formData.append("content", content);
-    if (file) formData.append("media", file);
-
-    try {
-      const data = await apiFetch('/api/v1/posts', {
-        method: 'POST',
-        // apiFetch automatically attaches the Bearer token!
-        body: formData
-      });
-      if (data.success && onPostSubmit) onPostSubmit();
-    } catch(err) { console.error("Failed to create post", err); }
-    
-    setContent(''); setFile(null);
-    if(fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  return (
-    <div className="border-b border-gray-800 p-4">
-      <div className="flex gap-4">
-        <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user?.email} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
-        <div className="flex-grow flex flex-col">
-          <textarea className="w-full bg-transparent text-xl outline-none resize-none placeholder-gray-500 min-h-[100px]" placeholder="What's happening?" value={content} onChange={(e) => setContent(e.target.value)} />
-          {file && <p className="text-sm text-blue-400 font-bold mt-2">Attached: {file.name}</p>}
-          <div className="border-t border-gray-800 pt-4 flex justify-between items-center mt-2">
-            <div>
-              <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={(e) => setFile(e.target.files[0])} />
-              <button onClick={() => fileInputRef.current?.click()} className="text-blue-400 hover:bg-gray-800 p-2 rounded-full"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></button>
-            </div>
-            <button onClick={handleSubmit} disabled={!content.trim() && !file} className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold py-2 px-6 rounded-full">Post</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

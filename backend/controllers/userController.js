@@ -37,7 +37,8 @@ export const toggleFollow = async (req, res) => {
              
         if (existingFollow) {
             await supabase.from('follows').delete().eq('id', existingFollow.id);
-            res.json({ success: true, action: 'unfollowed' });
+            const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId);
+            res.json({ success: true, action: 'unfollowed', followerCount, isFollowing: false });
         } else {
             await supabase.from('follows').insert({ follower_id: followerId, following_id: followingId });
             
@@ -48,7 +49,8 @@ export const toggleFollow = async (req, res) => {
                 type: 'follow'
             });
             
-            res.json({ success: true, action: 'followed' });
+            const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId);
+            res.json({ success: true, action: 'followed', followerCount, isFollowing: true });
         }
     } catch(err) {
         res.status(500).json({ error: err.message });
@@ -72,6 +74,60 @@ export const getSocialCounts = async (req, res) => {
         if (err1 || err2) throw (err1 || err2);
         
         res.json({ success: true, followers: followersCount || 0, following: followingCount || 0 });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const getFollowers = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        // Get all follower IDs
+        const { data: followsData, error: followsError } = await supabase
+            .from('follows')
+            .select('follower_id')
+            .eq('following_id', userId);
+            
+        if (followsError) throw followsError;
+        if (!followsData || followsData.length === 0) return res.json({ success: true, users: [] });
+
+        const followerIds = followsData.map(f => f.follower_id);
+        
+        // Get user details
+        const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, bio')
+            .in('id', followerIds);
+            
+        if (usersError) throw usersError;
+        res.json({ success: true, users: usersData });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const getFollowing = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        // Get all following IDs
+        const { data: followsData, error: followsError } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', userId);
+            
+        if (followsError) throw followsError;
+        if (!followsData || followsData.length === 0) return res.json({ success: true, users: [] });
+
+        const followingIds = followsData.map(f => f.following_id);
+        
+        // Get user details
+        const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, bio')
+            .in('id', followingIds);
+            
+        if (usersError) throw usersError;
+        res.json({ success: true, users: usersData });
     } catch(err) {
         res.status(500).json({ error: err.message });
     }

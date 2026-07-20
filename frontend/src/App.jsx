@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { Web3Provider } from './context/Web3Context';
 
 import AppLayout from './components/AppLayout';
 import Login from './pages/Login';
@@ -8,7 +10,14 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import TrendingPage from './pages/TrendingPage';
 import PostDetail from './pages/PostDetail';
+import Explore from './pages/Explore';
+import Bookmarks from './pages/Bookmarks';
+import Chat from './pages/Chat';
+import Studio from './pages/Studio';
+import Premium from './pages/Premium';
+import Dashboard from './components/Dashboard';
 
 // --- Protected Route Wrapper ---
 const ProtectedRoute = ({ children }) => {
@@ -26,22 +35,33 @@ const ProtectedRoute = ({ children }) => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Protected Routes wrapped in Layout */}
-          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-             <Route path="/" element={<Home />} />
-             <Route path="/profile" element={<Profile />} />
-             <Route path="/profile/:id" element={<Profile />} />
-             <Route path="/notifications" element={<Notifications />} />
-             <Route path="/post/:id" element={<PostDetail />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <ThemeProvider>
+        <AuthProvider>
+          <Web3Provider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            
+              {/* Protected Routes wrapped in Layout */}
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                 <Route path="/" element={<Home />} />
+                 <Route path="/explore" element={<Explore />} />
+                 <Route path="/notifications" element={<Notifications />} />
+                 <Route path="/chat" element={<Chat />} />
+                 <Route path="/bookmarks" element={<Bookmarks />} />
+                 <Route path="/premium" element={<Premium />} />
+                 <Route path="/profile" element={<Profile />} />
+                 <Route path="/profile/:id" element={<Profile />} />
+                 <Route path="/studio" element={<Studio />} />
+                 <Route path="/trending" element={<TrendingPage />} />
+                 <Route path="/post/:id" element={<PostDetail />} />
+                 <Route path="/dashboard" element={<Dashboard />} />
+              </Route>
+            </Routes>
+          </Web3Provider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 }

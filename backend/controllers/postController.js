@@ -22,6 +22,18 @@ export const createPost = async (req, res) => {
             
         if (error) throw error;
         
+        // Extract and insert hashtags
+        const hashtags = content.match(/#[a-z0-9_]+/gi);
+        if (hashtags) {
+            const uniqueTags = [...new Set(hashtags.map(t => t.toLowerCase()))];
+            for (const tag of uniqueTags) {
+                const { data: tagData } = await supabase.from('hashtags').upsert({ tag }, { onConflict: 'tag' }).select('id').single();
+                if (tagData) {
+                    await supabase.from('post_hashtags').insert({ post_id: newPost.id, hashtag_id: tagData.id });
+                }
+            }
+        }
+        
         // Respond instantly with pending status
         res.status(201).json({ success: true, post: newPost });
         
@@ -178,8 +190,19 @@ export const toggleRepost = async (req, res) => {
                 });
             }
             
-            res.json({ success: true, action: 'reposted' });
+            const { count: repostCount } = await supabase.from('reposts').select('*', { count: 'exact', head: true }).eq('post_id', postId);
+            res.json({ success: true, action: 'reposted', repostCount, isReposted: true });
         }
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const incrementImpression = async (req, res) => {
+    try {
+        const { error } = await supabase.rpc('increment_impression', { post_id_param: req.params.id });
+        if (error) throw error;
+        res.json({ success: true });
     } catch(err) {
         res.status(500).json({ error: err.message });
     }

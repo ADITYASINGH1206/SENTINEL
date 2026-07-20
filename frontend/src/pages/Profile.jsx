@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PostCard } from '../components/PostComponents';
 import { apiFetch } from '../services/api';
@@ -21,6 +22,11 @@ export default function Profile() {
   
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ bio: '', avatar_url: '', cover_url: '', wallet_address: '' });
+
+  // Social Modal State
+  const [showSocialModal, setShowSocialModal] = useState(null); // 'followers' | 'following' | null
+  const [socialList, setSocialList] = useState([]);
+  const [isLoadingSocial, setIsLoadingSocial] = useState(false);
 
   // Fetch Profile Info & Counts
   useEffect(() => {
@@ -64,6 +70,22 @@ export default function Profile() {
           }
       } catch (err) {
           console.error(err);
+      }
+  };
+
+  const openSocialModal = async (type) => {
+      setShowSocialModal(type);
+      setIsLoadingSocial(true);
+      setSocialList([]);
+      try {
+          const res = await apiFetch(`/api/v1/users/${profileId}/${type}`);
+          if (res.success) {
+              setSocialList(res.users);
+          }
+      } catch (err) {
+          console.error(`Failed to fetch ${type}`, err);
+      } finally {
+          setIsLoadingSocial(false);
       }
   };
 
@@ -129,8 +151,8 @@ export default function Profile() {
              )}
              
              <div className="flex gap-4 text-sm text-gray-500">
-                 <span className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.following}</strong> Following</span>
-                 <span className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.followers}</strong> Followers</span>
+                 <span onClick={() => openSocialModal('following')} className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.following}</strong> Following</span>
+                 <span onClick={() => openSocialModal('followers')} className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.followers}</strong> Followers</span>
              </div>
          </div>
       </div>
@@ -173,6 +195,44 @@ export default function Profile() {
                   <div className="flex gap-3 mt-6">
                       <button onClick={()=>setShowEditModal(false)} className="flex-1 border border-gray-600 hover:bg-gray-800 font-bold py-2 rounded transition">Cancel</button>
                       <button onClick={handleEditSave} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-2 rounded transition">Save</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Social Modal (Followers/Following) */}
+      {showSocialModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-800 flex flex-col max-h-[80vh]">
+                  <div className="flex justify-between items-center p-4 border-b border-gray-800">
+                      <h3 className="text-xl font-bold capitalize">{showSocialModal}</h3>
+                      <button onClick={() => setShowSocialModal(null)} className="p-2 hover:bg-gray-800 rounded-full transition">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="overflow-y-auto p-4 flex-1">
+                      {isLoadingSocial ? (
+                          <div className="flex justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>
+                      ) : socialList.length === 0 ? (
+                          <div className="text-center text-gray-500 p-8">No {showSocialModal} yet.</div>
+                      ) : (
+                          <div className="space-y-4">
+                              {socialList.map(u => (
+                                  <Link 
+                                      key={u.id} 
+                                      to={`/profile/${u.id}`} 
+                                      onClick={() => setShowSocialModal(null)}
+                                      className="flex items-center gap-3 hover:bg-gray-800 p-2 rounded-xl transition"
+                                  >
+                                      <img src={u.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + u.username} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                          <div className="font-bold text-[15px] truncate text-white">{u.display_name || u.username}</div>
+                                          <div className="text-gray-500 text-[15px] truncate">@{u.username}</div>
+                                      </div>
+                                  </Link>
+                              ))}
+                          </div>
+                      )}
                   </div>
               </div>
           </div>
