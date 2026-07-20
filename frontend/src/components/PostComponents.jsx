@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, BarChart2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import VerifiedBadge from './VerifiedBadge';
+import useIntersectionObserver from '../hooks/useIntersectionObserver';
 
 export function CommentSection({ postId }) {
     const [comments, setComments] = useState([]);
@@ -70,7 +71,20 @@ export function PostCard({ post, isRepost }) {
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [reposted, setReposted] = useState(initialReposted);
   const [repostCount, setRepostCount] = useState(initialRepostCount);
+  const [impressions, setImpressions] = useState(post.impressions_count || 0);
   const [showComments, setShowComments] = useState(false);
+  const [hasTracked, setHasTracked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const [targetRef, isIntersecting] = useIntersectionObserver({ threshold: 0.5 });
+
+  useEffect(() => {
+      if (isIntersecting && !hasTracked) {
+          setHasTracked(true);
+          setImpressions(prev => prev + 1);
+          apiFetch(`/api/v1/posts/${post.id}/impression`, { method: 'POST' }).catch(console.error);
+      }
+  }, [isIntersecting, hasTracked, post.id]);
 
   const handleLike = async () => {
       setLiked(!liked);
@@ -97,6 +111,16 @@ export function PostCard({ post, isRepost }) {
       }
   };
 
+  const handleFollow = async (e) => {
+      e.preventDefault(); // Prevent navigating to profile if wrapped in link
+      setIsFollowing(!isFollowing);
+      try {
+          await apiFetch(`/api/v1/users/${post.user_id}/follow`, { method: 'POST' });
+      } catch (err) {
+          setIsFollowing(!isFollowing);
+      }
+  };
+
   const badgeStyles = {
       pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
       verified: 'bg-green-500/20 text-green-400 border-green-500/50',
@@ -104,27 +128,32 @@ export function PostCard({ post, isRepost }) {
   };
 
   return (
-    <div className="border-b border-gray-800 p-4 hover:bg-gray-800/30 transition-colors">
+    <div ref={targetRef} className="border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
       {isRepost && (
-          <div className="text-sm text-gray-500 flex items-center gap-2 mb-2 ml-10 font-bold">
+          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-2 ml-10 font-bold">
               <Share size={14} /> Reposted
           </div>
       )}
       <div className="flex gap-4">
         <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
-            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full hover:opacity-80 transition" />
+            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
         </Link>
         <div className="flex-grow">
-          <div className="flex items-center gap-1 mb-1">
+          <div className="flex items-center gap-1 mb-1 text-gray-900 dark:text-white flex-wrap">
             <Link to={`/profile/${post.user_id}`} className="font-bold hover:underline cursor-pointer">{post.users?.display_name || post.users?.username}</Link>
             <VerifiedBadge status={post.ai_status} />
-            <span className="text-gray-500 text-sm ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+            {user?.id !== post.user_id && (
+                <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
+                    {isFollowing ? 'Following' : 'Follow'}
+                </button>
+            )}
+            <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
           </div>
           <Link to={`/post/${post.id}`}>
-             <p className="mb-3 text-[15px]">{post.content}</p>
+             <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
           </Link>
           {post.media_url && (
-              <div className="mb-3 w-full h-48 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
+              <div className="mb-3 w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
                  <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
               </div>
           )}
@@ -132,22 +161,23 @@ export function PostCard({ post, isRepost }) {
             {(post.ai_status || 'pending').toUpperCase()}
           </div>
           
-          <div className="flex justify-between items-center mt-4 text-gray-500 max-w-md">
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-400 transition group">
-                <div className="p-2 rounded-full group-hover:bg-blue-400/10"><MessageCircle size={18} /></div>
+          <div className="flex justify-between items-center mt-4 text-gray-500 dark:text-gray-400 max-w-md">
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 hover:text-blue-500 transition group">
+                <div className="p-2 rounded-full group-hover:bg-blue-500/10"><MessageCircle size={18} /></div>
                 <span className="text-sm">{commentCount > 0 ? commentCount : ''}</span>
             </button>
-            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-400 transition group ${reposted ? 'text-green-400' : ''}`}>
-                <div className="p-2 rounded-full group-hover:bg-green-400/10"><Share size={18} /></div>
+            <button onClick={handleRepost} className={`flex items-center gap-2 hover:text-green-500 transition group ${reposted ? 'text-green-500' : ''}`}>
+                <div className="p-2 rounded-full group-hover:bg-green-500/10"><Share size={18} /></div>
                 <span className="text-sm">{repostCount > 0 ? repostCount : ''}</span>
             </button>
             <button onClick={handleLike} className={`flex items-center gap-2 hover:text-pink-500 transition group ${liked ? 'text-pink-500' : ''}`}>
                 <div className="p-2 rounded-full group-hover:bg-pink-500/10"><Heart size={18} fill={liked ? "currentColor" : "none"} /></div>
-                <span className="text-sm">{likeCount}</span>
+                <span className="text-sm">{likeCount > 0 ? likeCount : ''}</span>
             </button>
-            <button className="flex items-center gap-2 hover:text-blue-400 transition group">
-                <div className="p-2 rounded-full group-hover:bg-blue-400/10"><BarChart2 size={18} /></div>
-            </button>
+            <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 cursor-default">
+                <div className="p-2 rounded-full"><Eye size={18} /></div>
+                <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
+            </div>
           </div>
 
           {showComments && <CommentSection postId={post.id} />}

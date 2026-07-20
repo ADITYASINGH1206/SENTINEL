@@ -1,5 +1,6 @@
 @import "tailwindcss";
+@variant dark (&:is(.dark *));
 
 body {
-  @apply bg-gray-900 text-white;
+  @apply bg-white text-slate-900 dark:bg-zinc-950 dark:text-white transition-colors duration-200;
 }

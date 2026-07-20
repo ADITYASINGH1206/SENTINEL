@@ -37,7 +37,8 @@ export const toggleFollow = async (req, res) => {
              
         if (existingFollow) {
             await supabase.from('follows').delete().eq('id', existingFollow.id);
-            res.json({ success: true, action: 'unfollowed' });
+            const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId);
+            res.json({ success: true, action: 'unfollowed', followerCount, isFollowing: false });
         } else {
             await supabase.from('follows').insert({ follower_id: followerId, following_id: followingId });
             
@@ -48,7 +49,8 @@ export const toggleFollow = async (req, res) => {
                 type: 'follow'
             });
             
-            res.json({ success: true, action: 'followed' });
+            const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId);
+            res.json({ success: true, action: 'followed', followerCount, isFollowing: true });
         }
     } catch(err) {
         res.status(500).json({ error: err.message });
