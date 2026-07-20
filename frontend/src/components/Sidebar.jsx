@@ -7,7 +7,7 @@ import ThemeToggler from './ThemeToggler';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const { account, balance, hasClaimedAirdrop, isConnecting, connectWallet, claimAirdrop } = React.useContext(Web3Context);
+  const { account, balance, hasClaimedAirdrop, isConnecting, claimStatus, claimTxHash, connectWallet, claimAirdrop, addTokenToWallet } = React.useContext(Web3Context);
   const location = useLocation();
   const [showLogout, setShowLogout] = useState(false);
 
@@ -17,7 +17,6 @@ export default function Sidebar() {
     { name: 'Notifications', path: '/notifications', icon: <Bell size={26} /> },
     { name: 'Messages', path: '/chat', icon: <Mail size={26} /> },
     { name: 'Bookmarks', path: '/bookmarks', icon: <Bookmark size={26} /> },
-    { name: 'Studio', path: '/studio', icon: <MonitorPlay size={26} /> },
     { name: 'Premium', path: '/premium', icon: <Zap size={26} /> },
     { name: 'Profile', path: '/profile', icon: <User size={26} /> },
     { name: 'More', path: '#', icon: <CircleEllipsis size={26} /> }
@@ -66,9 +65,25 @@ export default function Sidebar() {
                        <span className="text-gray-500 font-medium">Balance</span>
                        <span className="font-bold text-blue-500 flex items-center gap-1"><Coins size={14}/> {balance} $SNTL</span>
                    </div>
-                   {!hasClaimedAirdrop && (
+                   {!hasClaimedAirdrop && !claimStatus && (
                        <button onClick={claimAirdrop} disabled={isConnecting} className="w-full mt-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-2 rounded-xl transition text-sm disabled:opacity-50 shadow-sm animate-pulse hover:animate-none">
-                           {isConnecting ? 'Claiming...' : 'Claim 500 $SNTL'}
+                           {isConnecting ? 'Processing...' : 'Claim 500 $SNTL'}
+                       </button>
+                   )}
+                   {claimStatus && (
+                       <div className="mt-2 text-center text-xs font-semibold p-2 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-500">
+                           {claimStatus}
+                           {claimTxHash && (
+                               <div className="mt-1">
+                                   <a href={`https://sepolia.blockscout.com/tx/${claimTxHash}`} target="_blank" rel="noreferrer" className="underline hover:text-blue-400">View on Blockscout</a>
+                               </div>
+                           )}
+                       </div>
+                   )}
+                   {hasClaimedAirdrop && (
+                       <button onClick={addTokenToWallet} className="w-full mt-2 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 rounded-xl transition text-sm shadow-sm flex items-center justify-center gap-2">
+                           <Coins size={16} />
+                           Add $SNTL to Wallet
                        </button>
                    )}
                </div>

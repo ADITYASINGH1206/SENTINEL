@@ -9,6 +9,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import trendingRoutes from './routes/trendingRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import web3Routes from './routes/web3Routes.js';
+import relayerRoutes from './routes/relayer.js';
 
 const app = express();
 app.use(cors());
@@ -20,6 +21,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/trending', trendingRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/web3', web3Routes);
+app.use('/api', relayerRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

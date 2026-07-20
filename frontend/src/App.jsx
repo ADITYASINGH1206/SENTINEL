@@ -17,6 +17,7 @@ import Bookmarks from './pages/Bookmarks';
 import Chat from './pages/Chat';
 import Studio from './pages/Studio';
 import Premium from './pages/Premium';
+import Dashboard from './components/Dashboard';
 
 // --- Protected Route Wrapper ---
 const ProtectedRoute = ({ children }) => {
@@ -55,6 +56,7 @@ export default function App() {
                  <Route path="/studio" element={<Studio />} />
                  <Route path="/trending" element={<TrendingPage />} />
                  <Route path="/post/:id" element={<PostDetail />} />
+                 <Route path="/dashboard" element={<Dashboard />} />
               </Route>
             </Routes>
           </Web3Provider>
