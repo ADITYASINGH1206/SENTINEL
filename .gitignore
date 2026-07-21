@@ -11,3 +11,4 @@ typechain-types/
 dist/
 build/
 secret.json
+images/

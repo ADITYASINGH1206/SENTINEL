@@ -99,7 +99,8 @@ async def moderate_image(req: ModerateImageRequest):
     # ---- Download image ----
     print("[Pipeline] Downloading image...")
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
             resp = await client.get(req.image_url)
             resp.raise_for_status()
             image_bytes = resp.content

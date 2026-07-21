@@ -44,14 +44,21 @@ def _get_deepfake_classifier():
 
 
 def _get_face_model():
-    """Load YOLOv8n-face via ultralytics (CPU)."""
+    """Load YOLOv8n-face via ultralytics (CPU). Downloads if missing."""
     global _face_model
     if _face_model is None:
         print("[Deepfake] Loading YOLOv8n-face (CPU)...")
         try:
             from ultralytics import YOLO
+            import urllib.request
 
             model_path = os.environ.get("YOLO_FACE_MODEL", "yolov8n-face.pt")
+            if not os.path.exists(model_path):
+                print(f"[Deepfake] Downloading {model_path}...")
+                url = "https://huggingface.co/arnabdhar/YOLOv8-Face-Detection/resolve/main/yolov8n-face.pt"
+                urllib.request.urlretrieve(url, model_path)
+                print(f"[Deepfake] Downloaded {model_path}.")
+
             _face_model = YOLO(model_path)
             print("[Deepfake] YOLOv8n-face loaded.")
         except Exception as exc:

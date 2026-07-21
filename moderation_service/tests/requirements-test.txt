@@ -1,0 +1,4 @@
+# Test dependencies (install alongside main requirements)
+pytest
+pytest-asyncio
+httpx
