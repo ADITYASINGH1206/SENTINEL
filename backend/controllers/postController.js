@@ -75,7 +75,7 @@ export const createPost = async (req, res) => {
                       }
                   });
                   
-                  const { ai_detection, safety } = textAnalysisResponse.data;
+                  const { ai_detection, safety, domain } = textAnalysisResponse.data;
                   
                   let finalStatus = 'verified';
                   // Flag if AI generated or if risk score implies low trust
@@ -85,8 +85,20 @@ export const createPost = async (req, res) => {
                   if (ai_detection?.is_ai_generated || trustScore < trustThreshold) {
                       finalStatus = 'flagged';
                   }
+                  
+                  // Construct Analysis Summary
+                  let analysis_summary = '';
+                  if (safety?.summary) analysis_summary += safety.summary + ' ';
+                  if (ai_detection?.reasoning) analysis_summary += ai_detection.reasoning;
 
-                  await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
+                  await supabase.from('posts').update({ 
+                      ai_status: finalStatus,
+                      domain_topic: domain?.primary_topic,
+                      sub_topics: domain?.sub_topics || [],
+                      analysis_summary: analysis_summary.trim(),
+                      ai_confidence: ai_detection?.confidence_score,
+                      risk_score: safety?.risk_score
+                  }).eq('id', newPost.id);
                   
                   // Trigger web3 Relayer if wallet address exists
                   const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();

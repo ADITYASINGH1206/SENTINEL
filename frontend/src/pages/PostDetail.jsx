@@ -46,22 +46,51 @@ export default function PostDetail() {
 
       {/* Dedicated AI Analysis Section */}
       <div className="p-6 border-b border-gray-800 bg-gray-800/30">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-             AI Orchestrator Analysis
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                 <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                 AI Orchestrator Analysis
+              </h3>
+              
+              {/* Domain Tags */}
+              <div className="flex flex-wrap gap-2 justify-end">
+                  {post.domain_topic && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/50">
+                          #{post.domain_topic}
+                      </span>
+                  )}
+                  {post.sub_topics && post.sub_topics.map((t, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-full border border-gray-600">
+                          #{t}
+                      </span>
+                  ))}
+              </div>
+          </div>
+          
           <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-             <div className="flex justify-between items-center mb-2">
+             <div className="flex justify-between items-center mb-4">
                  <span className="text-gray-400">Status:</span>
                  <span className="font-bold text-green-400">{post.ai_status.toUpperCase()}</span>
              </div>
-             <p className="text-sm text-gray-500 italic mt-4">
-                 {post.ai_status === 'verified' 
-                    ? '"The media passed all heuristic threshold checks. No deepfake blending anomalies found."'
-                    : post.ai_status === 'flagged' 
-                    ? '"Warning: Significant visual artifacts and audio splicing detected. Highly likely to be synthesized media."'
-                    : '"Analysis is currently pending via the AI Orchestrator..."'
-                 }
+             
+             {/* Dynamic Metric Bar */}
+             <div className="grid grid-cols-3 gap-4 mb-4">
+                 <div className="bg-gray-800 p-2 rounded text-center">
+                     <p className="text-xs text-gray-400 uppercase tracking-wider">AI Probability</p>
+                     <p className="text-lg font-bold">{post.ai_confidence != null ? post.ai_confidence + '%' : 'N/A'}</p>
+                 </div>
+                 <div className="bg-gray-800 p-2 rounded text-center">
+                     <p className="text-xs text-gray-400 uppercase tracking-wider">Risk Score</p>
+                     <p className="text-lg font-bold">{post.risk_score != null ? post.risk_score + '%' : 'N/A'}</p>
+                 </div>
+                 <div className="bg-gray-800 p-2 rounded text-center">
+                     <p className="text-xs text-gray-400 uppercase tracking-wider">Primary Domain</p>
+                     <p className="text-lg font-bold capitalize">{post.domain_topic || 'N/A'}</p>
+                 </div>
+             </div>
+             
+             <p className="text-sm text-gray-400 italic mt-4">
+                 {post.analysis_summary || "No detailed analysis available."}
              </p>
           </div>
       </div>
