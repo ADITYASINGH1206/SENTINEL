@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient.js';
 import axios from 'axios';
 import FormData from 'form-data';
 import { processWeb3Transaction } from '../services/web3Relayer.js';
+import { moderateImage } from '../services/moderationService.js';
 
 export const createPost = async (req, res) => {
     try {
@@ -64,6 +65,12 @@ export const createPost = async (req, res) => {
                   console.error('[AI Orchestrator Error]', aiErr.message);
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
              }
+
+             // Role 3: Image moderation (parallel, fire-and-forget)
+             // The moderation service writes results directly to the DB
+             moderateImage(newPost.id, mediaUrl).catch(err =>
+                 console.warn('[Moderation] Image moderation dispatch failed:', err.message)
+             );
         } else {
              // No media file, auto verify
              await supabase.from('posts').update({ ai_status: 'verified' }).eq('id', newPost.id);

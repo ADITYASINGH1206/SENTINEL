@@ -6,6 +6,33 @@ or libraries not listed here.
 
 ---
 
+## 🧭 CURRENT PHASE: Local-Only Build (No Deployment)
+
+> Added 2026-07-22 — this note overrides any deployment-related instructions
+> elsewhere in this file until Phase 2 begins. It applies across all roles.
+
+**Phase 1 (current, this update):**
+- Every ML model used anywhere in this project is converted to **ONNX**
+  ahead of time and saved to a local `models/` folder on the dev machine.
+- Every service loads its model from that local `models/` folder via
+  `onnxruntime` — no Hugging Face Hub download at request time, no hosted
+  inference API.
+- Everything runs locally (`localhost` ports). No cloud deployment work of
+  any kind: no Sepolia/L2 contract deployment, no IPFS pinning, no
+  Cloudflare Turnstile, no Upstash Redis, no hosted DB requirement beyond
+  what's already running. Where a role's spec below still references one of
+  these cloud services, treat it as a **Phase 2** item — stub it out or skip
+  it rather than building against a live cloud dependency.
+- SQL schema changes are in scope for this update where the plan below
+  needs them (see Shared Data Model).
+
+**Phase 2 (later — do not start yet):** once the local build works end to
+end, this file will be revisited to add the deployment plan (hosting, IPFS,
+on-chain anchor network, rate limiting, bot protection, etc.). Do not build
+ahead for Phase 2.
+
+---
+
 # 📊 BUILD PROGRESS TRACKER
 
 > Last updated: 2026-07-22
@@ -166,6 +193,15 @@ or libraries not listed here.
 
 ## ROLE 3 — Spam, Abuse & Visual Moderation
 
+> ⚠️ **SPEC CHANGED 2026-07-22** — deepfake detection is being swapped from
+> `prithivMLmods/deepfake-detector-model-v1` + YOLOv8n-face/affine-warp to
+> `haywoodsloan/ai-image-detector-deploy` (SwinV2), run on the whole image
+> only (no face crop step). Models also move to local ONNX files under
+> `models/`. Everything below in this tracker still describes the
+> **previous** build — rows involving the deepfake model, YOLO, and HF
+> Hub-loaded models need rework against the updated spec further down this
+> file.
+
 ### Moderation Service (`moderation_service/`)
 
 | Module | File | Status | Notes |
@@ -276,6 +312,7 @@ Account { id, wallet_address, username, bio, created_at,
 Post    { id, account_id, text, media_urls[], created_at,
           ai_text_label, ai_text_confidence,
           image_moderation_status, image_labels[],
+          deepfake_confidence, deepfake_model_version,
           visibility: public | labeled | blocked }
 
 Follow  { follower_id, followee_id, created_at }
@@ -287,6 +324,48 @@ Report  { id, target_type: account|post, target_id,
 
 Postgres for all four tables. Every role reads/writes against this schema —
 do not invent a parallel schema per role.
+
+**SQL change (this update):** add `deepfake_confidence FLOAT` and
+`deepfake_model_version TEXT` columns to `posts`. `deepfake_model_version`
+records which local ONNX model produced the verdict (e.g.
+`"swinv2-haywoodsloan-v1"`) — useful while the detector model is being
+swapped/tested locally. Write a migration script alongside the existing
+`schema_update_v2.sql` rather than editing prior migrations in place.
+
+## Model Serving: Local ONNX Convention (Role 2 & Role 3)
+
+All ML models are converted to ONNX **once**, offline, and saved locally.
+No service downloads a model from the Hugging Face Hub (or anywhere else)
+at request time — conversion is a one-time setup step; inference loads only
+the local `.onnx` file via `onnxruntime`.
+
+```
+models/
+  ai_text_detector/        # Role 2 — desklib/ai-text-detector-v1.01
+    model.onnx
+    tokenizer/              # tokenizer files copied alongside, not converted
+  nsfw_nudenet/             # Role 3 — NudeNet v3 (ships ONNX already)
+    detector.onnx
+  swinv2_deepfake/          # Role 3 — haywoodsloan/ai-image-detector-deploy
+    model.onnx
+    preprocessor_config.json
+```
+
+Conversion (one time, per model):
+1. Download the model from Hugging Face once, into a local cache.
+2. Export to ONNX (`torch.onnx.export` or `optimum-cli export onnx`), with
+   dynamic axes for batch size and sequence length/image size.
+3. Save the `.onnx` file (plus tokenizer/preprocessor config it needs) under
+   the matching `models/<name>/` folder above.
+4. Every service loads with `onnxruntime.InferenceSession(<local_path>,
+   providers=["CPUExecutionProvider"])` — never `from_pretrained(...)` at
+   request time.
+
+New deliverable: `scripts/convert_to_onnx.py` — single script, model name as
+a CLI arg, handles all conversions above. Its own requirements (`torch`,
+`transformers`, `onnx`, `optimum`) are separate from each service's runtime
+`requirements.txt`, which only needs `onnxruntime` plus whatever's needed
+for pre/post-processing.
 
 ---
 
@@ -361,32 +440,41 @@ do not invent a parallel schema per role.
 ## ROLE 3 — Spam, Abuse & Visual Moderation
 
 ### Tech stack
-- NSFW/explicit detection: NudeNet v3 (ONNX Runtime, CPU)
-- AI-generated / deepfake image detection: `prithivMLmods/deepfake-detector-model-v1`
-  (SigLIP2 image classifier)
-- Facial deepfake fallback: `yolov8n-face.pt` (confidence threshold 0.25) +
-  OpenCV `cv2.warpAffine`
-- Provenance: `c2pa-python`, read-only
+- NSFW/explicit detection: NudeNet v3 (ONNX Runtime, CPU), local ONNX file
+  at `models/nsfw_nudenet/detector.onnx`. Client-side pre-check with
+  `nsfwjs` happens earlier, in Role 1, before upload — this is the
+  authoritative server-side check.
+- Provenance / AI-watermark detection: `c2pa-python`, read-only — checks for
+  an embedded C2PA manifest (e.g. Content Credentials left by AI generation
+  tools).
+- AI-generated / deepfake image detection: `haywoodsloan/ai-image-detector-deploy`
+  (SwinV2 image classifier), converted to ONNX, local file at
+  `models/swinv2_deepfake/model.onnx`. Runs on the **whole image only** —
+  no face detection, no cropping. This **replaces** the previous
+  `prithivMLmods/deepfake-detector-model-v1` (SigLIP2) and the entire
+  `yolov8n-face.pt` + OpenCV `cv2.warpAffine` fallback path, which is
+  removed — the new model doesn't need face-cropped input.
 - Spam scoring: hand-written weighted heuristic (no external model for v1)
-- Serving: FastAPI, CPU, `device="cpu"` explicit on every model load, debug
-  `print()` at each pipeline phase
+- Serving: FastAPI, CPU, `device="cpu"` / `CPUExecutionProvider` explicit on
+  every model load, debug `print()` at each pipeline phase. Everything runs
+  on `localhost` — see the Phase 1 note at the top of this file.
+
+Full pipeline order across roles: `nsfwjs` (client-side pre-check, Role 1)
+→ NudeNet (server-side, this service) → C2PA → SwinV2.
 
 ### Execution pipeline — `POST /moderate/image { post_id, image_url }`
-Sequential, early-exit:
+Sequential, early-exit. Fixed order: **NudeNet → C2PA → SwinV2**.
 1. **NudeNet** on the image. Explicit-anatomy label confidence `>60%` →
    `status: blocked`, halt. Confidence 18–60% or suggestive-only labels →
    `labels += "sensitive_content"`, continue.
 2. **c2pa.Reader** on the image. Manifest found → `labels += "disclosed_ai_content"`.
    Continue regardless of result — never halt or block on this step.
-3. **prithivMLmods/deepfake-detector-model-v1** on the full image. `Fake`
-   confidence `>65%` → `labels += "ai_generated_image"`, record
-   `deepfake_confidence`.
-4. **YOLOv8n-face** (conf 0.25) on the image. If keypoints found: affine-warp
-   to level eyes, crop with 20% margin. If keypoints fail: fall back to
-   standard box crop. Run cropped face(s) through the same deepfake model;
-   take the max confidence between full-image and face-level results as the
-   final `deepfake_confidence`.
-5. Return `{ status: allowed|blocked, labels[], deepfake_confidence, disclosed_ai_content: bool }`.
+3. **SwinV2** (`haywoodsloan/ai-image-detector-deploy`) on the **full,
+   uncropped image** — single pass, no face detection, no YOLO, no
+   affine-warp. `Fake` confidence `>65%` → `labels += "ai_generated_image"`,
+   record `deepfake_confidence` directly from this pass.
+4. Return `{ status: allowed|blocked, labels[], deepfake_confidence,
+   deepfake_model_version: "swinv2-haywoodsloan-v1", disclosed_ai_content: bool }`.
    Write these fields onto the `Post` row.
 
 ### Execution pipeline — `POST /moderate/account-score { account_id }`
@@ -412,14 +500,23 @@ Runs on every new follow event and as a daily batch job over all accounts.
 ### Deliverables
 - `moderation_service/app.py` — FastAPI app: `/moderate/image`,
   `/moderate/account-score`, `/report`
-- `moderation_service/nsfw.py` — NudeNet wrapper
-- `moderation_service/deepfake.py` — SigLIP2 model + YOLOv8n-face crop logic
+- `moderation_service/nsfw.py` — NudeNet wrapper, loads
+  `models/nsfw_nudenet/detector.onnx`
+- `moderation_service/deepfake.py` — SwinV2 (`haywoodsloan/ai-image-detector-deploy`)
+  wrapper, loads `models/swinv2_deepfake/model.onnx`, whole-image inference
+  only. **Delete** all YOLOv8n-face / affine-warp / face-crop code from
+  this file — the new model doesn't take a separate face pass.
 - `moderation_service/provenance.py` — c2pa-python wrapper
 - `moderation_service/spam_score.py` — heuristic scoring logic
 - `moderation_service/reports.py` — report queue + routing
 - `moderation_service/requirements.txt` — must include `onnxruntime`,
-  `transformers`, `ultralytics`, `opencv-python-headless`, `c2pa-python`
+  `c2pa-python`, `opencv-python-headless` (image IO/resizing only), `numpy`,
+  `Pillow`. **Remove** `ultralytics` and `transformers` — no longer needed
+  at runtime (transformers is only needed once, in the conversion script).
 - `python -m venv venv && pip install -r requirements.txt`
+- `scripts/convert_to_onnx.py` (shared with Role 2) — one-time conversion of
+  NudeNet/SwinV2 into the local `models/` folder; see the Model Serving
+  section above.
 
 ---
 
@@ -430,7 +527,7 @@ Role 1 → Role 2:  POST /analyze/text        { post_id, text }
                →  { ai_text_label, ai_text_confidence, misleading_label, sources[] }
 
 Role 1 → Role 3:  POST /moderate/image       { post_id, image_url }
-               →  { status, labels[], deepfake_confidence, disclosed_ai_content }
+               →  { status, labels[], deepfake_confidence, deepfake_model_version, disclosed_ai_content }
 
 Role 1 → Role 3:  POST /moderate/account-score  { account_id }
                →  { score, band, signals }

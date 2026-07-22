@@ -4,10 +4,8 @@ python-dotenv
 httpx
 onnxruntime
 nudenet
-transformers
-torch
-ultralytics
 opencv-python-headless
 c2pa-python
 numpy
 Pillow
+supabase

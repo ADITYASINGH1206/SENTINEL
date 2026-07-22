@@ -56,6 +56,7 @@ class ModerateImageResponse(BaseModel):
     status: str                  # "allowed" | "blocked"
     labels: list[str]
     deepfake_confidence: float
+    deepfake_model_version: str
     disclosed_ai_content: bool
 
 
@@ -90,7 +91,7 @@ class ReportResponse(BaseModel):
 async def moderate_image(req: ModerateImageRequest):
     """
     Sequential, early-exit image moderation pipeline.
-    Steps: NudeNet → c2pa → Deepfake (full-image + face-level).
+    Steps: NudeNet → c2pa → SwinV2 deepfake (whole-image, single pass).
     """
     print(f"\n{'=' * 60}")
     print(f"[/moderate/image] post_id={req.post_id}  image_url={req.image_url}")
@@ -128,6 +129,7 @@ async def moderate_image(req: ModerateImageRequest):
             status="blocked",
             labels=nsfw_result["labels"],
             deepfake_confidence=0.0,
+            deepfake_model_version="n/a",
             disclosed_ai_content=False,
         )
 
@@ -141,10 +143,11 @@ async def moderate_image(req: ModerateImageRequest):
         disclosed_ai_content = True
     print(f"[Pipeline] disclosed_ai_content={disclosed_ai_content}")
 
-    # ---- Steps 3-4: Deepfake detection ----
-    print("[Pipeline] Steps 3-4: deepfake detection (full + face)")
+    # ---- Step 3: SwinV2 deepfake detection (whole-image) ----
+    print("[Pipeline] Step 3: SwinV2 deepfake detection (whole-image)")
     df_result = deepfake.analyze(image_bytes)
     deepfake_confidence = df_result["deepfake_confidence"]
+    deepfake_model_version = df_result.get("deepfake_model_version", "unknown")
     labels.extend(df_result["labels"])
 
     # ---- Final verdict ----
@@ -156,6 +159,8 @@ async def moderate_image(req: ModerateImageRequest):
     await db.update_post(req.post_id, {
         "image_moderation_status": status,
         "image_labels": labels,
+        "deepfake_confidence": deepfake_confidence,
+        "deepfake_model_version": deepfake_model_version,
         "visibility": visibility,
     })
 
@@ -163,6 +168,7 @@ async def moderate_image(req: ModerateImageRequest):
         status=status,
         labels=labels,
         deepfake_confidence=deepfake_confidence,
+        deepfake_model_version=deepfake_model_version,
         disclosed_ai_content=disclosed_ai_content,
     )
 

@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
+    "@tensorflow/tfjs": "^4.22.0",
     "ethers": "^6.17.0",
     "lucide-react": "^1.25.0",
+    "nsfwjs": "^4.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1"
