@@ -3,3 +3,9 @@ uvicorn
 python-dotenv
 requests
 python-multipart
+langchain-core
+langchain-google-genai
+pydantic>=2.0
+pydantic-settings
+langchain-groq
+langchain-openai

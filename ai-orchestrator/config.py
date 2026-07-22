@@ -35,6 +35,28 @@ class Settings(BaseSettings):
         description="Minimum trust score threshold for automatic content verification"
     )
 
+    # Text Engine Settings (LangChain / Cloud LLM)
+    GOOGLE_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Google API key for Gemini LLM access (used by the text analysis engine)"
+    )
+    GROQ_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Groq API key for Llama 3.1 fallback"
+    )
+    OPENAI_API_KEY: Optional[str] = Field(
+        default=None,
+        description="OpenAI API key for GPT-4o-mini fallback"
+    )
+    TEXT_MODEL_NAME: str = Field(
+        default="gemini-2.0-flash",
+        description="LLM model name for text analysis"
+    )
+    TEXT_MODEL_TEMPERATURE: float = Field(
+        default=0.0,
+        description="Temperature for text analysis LLM (0.0 = deterministic)"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
