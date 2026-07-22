@@ -27,23 +27,30 @@ Your teammate will provide you with a `.env` file.
 - It contains the `RPC_URL`, `RELAYER_PRIVATE_KEY`, and `CONTRACT_ADDRESS` needed for the backend to execute on-chain transactions.
 
 ### 2. Install Dependencies
-Open two terminal windows.
+Open three terminal windows.
 
-**Terminal 1 (Backend):**
+**Terminal 1 (Backend - Node.js):**
 ```bash
 cd backend
 npm install
 ```
 
-**Terminal 2 (Frontend):**
+**Terminal 2 (Frontend - React):**
 ```bash
 cd frontend
 npm install
 ```
 
+**Terminal 3 (AI Orchestrator - Python):**
+```bash
+cd ai-orchestrator
+pip install -r requirements.txt
+# Requires GOOGLE_API_KEY, GROQ_API_KEY, OPENAI_API_KEY in .env
+```
+
 ### 3. Run the Development Servers
 
-Start both servers simultaneously in their respective terminals:
+Start all three servers simultaneously in their respective terminals:
 
 **Backend:**
 ```bash
@@ -56,6 +63,23 @@ npm run dev
 npm run dev
 # Expected output: ➜  Local: http://localhost:5173/
 ```
+
+**AI Orchestrator:**
+```bash
+python app.py
+# Expected output: Uvicorn running on http://0.0.0.0:5000
+```
+
+---
+
+## 🤖 Text Safety Engine (AI Orchestrator)
+
+The platform features a **3-tier LangChain Fallback Hierarchy** (Gemini 2.0 Flash → Groq Llama 3.1 8B → OpenAI GPT-4o-mini) that evaluates text posts in a single pass to provide:
+1. **AI Generation Detection:** Identifies stylometric markers indicating LLM authorship.
+2. **Harm & Safety Assessment:** Flags hate speech, misinformation, and other high-risk categories.
+3. **Domain Classification:** Categorizes the text by topic (e.g., Politics, Tech).
+
+The backend automatically routes text posts to this engine and renders the resulting scores and tags seamlessly in the frontend UI.
 
 ---
 
