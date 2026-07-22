@@ -3,6 +3,12 @@ import axios from 'axios';
 import FormData from 'form-data';
 import { processWeb3Transaction } from '../services/web3Relayer.js';
 import { moderateImage } from '../services/moderationService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const createPost = async (req, res) => {
     try {
@@ -11,8 +17,10 @@ export const createPost = async (req, res) => {
         
         let mediaUrl = null;
         if (req.file) {
-             // Mock storing a file and getting a public URL for the hackathon
-             mediaUrl = 'https://via.placeholder.com/600x400.png?text=Uploaded+Media';
+             const filename = `${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+             const filepath = path.join(__dirname, '..', 'uploads', filename);
+             fs.writeFileSync(filepath, req.file.buffer);
+             mediaUrl = `http://localhost:8000/uploads/${filename}`;
         }
 
         const { data: newPost, error } = await supabase
@@ -38,20 +46,17 @@ export const createPost = async (req, res) => {
         // Respond instantly with pending status
         res.status(201).json({ success: true, post: newPost });
         
-        // Asynchronous AI Moderation Check (Non-blocking)
+        // Asynchronous AI Moderation Check
         if (req.file) {
-             const formData = new FormData();
-             formData.append('file', req.file.buffer, {
-                 filename: req.file.originalname,
-                 contentType: req.file.mimetype
-             });
-             
              try {
-                  const aiResponse = await axios.post('http://127.0.0.1:5000/api/v1/analyze', formData, {
-                      headers: { ...formData.getHeaders() }
-                  });
-                  const isFake = aiResponse.data.is_fake;
-                  const finalStatus = isFake ? 'flagged' : 'verified';
+                  // Role 3: Image moderation using the correct service
+                  const aiResponse = await moderateImage(newPost.id, mediaUrl);
+                  
+                  // Default to verified unless flagged/blocked by AI
+                  let finalStatus = 'verified';
+                  if (aiResponse && (aiResponse.status === 'blocked' || aiResponse.deepfake_confidence > 0.6)) {
+                      finalStatus = 'flagged';
+                  }
                   
                   await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
                   
@@ -62,15 +67,9 @@ export const createPost = async (req, res) => {
                   }
                   
              } catch (aiErr) {
-                  console.error('[AI Orchestrator Error]', aiErr.message);
+                  console.error('[Moderation Error]', aiErr.message);
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
              }
-
-             // Role 3: Image moderation (parallel, fire-and-forget)
-             // The moderation service writes results directly to the DB
-             moderateImage(newPost.id, mediaUrl).catch(err =>
-                 console.warn('[Moderation] Image moderation dispatch failed:', err.message)
-             );
         } else {
              // No media file, auto verify
              await supabase.from('posts').update({ ai_status: 'verified' }).eq('id', newPost.id);

@@ -15,3 +15,4 @@ images/
 models/
 scripts_venv/
 .pytest_cache/
+uploads/

@@ -43,18 +43,32 @@ npm install
 
 ### 3. Run the Development Servers
 
-Start both servers simultaneously in their respective terminals:
+Start all servers simultaneously in their respective terminals:
 
 **Backend:**
 ```bash
+cd backend
 npm run dev
 # Expected output: 🚀 Sentinel Node.js Backend running on port 8000
 ```
 
 **Frontend:**
 ```bash
+cd frontend
 npm run dev
 # Expected output: ➜  Local: http://localhost:5173/
+```
+
+**Moderation Service:**
+```bash
+cd moderation_service
+# If using Command Prompt / PowerShell:
+venv\Scripts\activate
+# If using Git Bash / Mac / Linux:
+source venv/Scripts/activate
+
+python app.py
+# Expected output: INFO:     Uvicorn running on http://0.0.0.0:8002
 ```
 
 ---
