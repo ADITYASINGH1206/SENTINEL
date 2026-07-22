@@ -65,8 +65,39 @@ export const createPost = async (req, res) => {
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
              }
         } else {
-             // No media file, auto verify
-             await supabase.from('posts').update({ ai_status: 'verified' }).eq('id', newPost.id);
+             // No media file, analyze text
+             try {
+                  const textAnalysisResponse = await axios.post('http://127.0.0.1:5000/api/v1/analyze/text', {
+                      text: content
+                  }, {
+                      headers: {
+                          'Content-Type': 'application/json'
+                      }
+                  });
+                  
+                  const { ai_detection, safety } = textAnalysisResponse.data;
+                  
+                  let finalStatus = 'verified';
+                  // Flag if AI generated or if risk score implies low trust
+                  const trustThreshold = parseInt(process.env.TRUST_SCORE_THRESHOLD || '80', 10);
+                  const trustScore = 100 - (safety?.risk_score || 0);
+                  
+                  if (ai_detection?.is_ai_generated || trustScore < trustThreshold) {
+                      finalStatus = 'flagged';
+                  }
+
+                  await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
+                  
+                  // Trigger web3 Relayer if wallet address exists
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  if (userRecord?.wallet_address || walletAddress) {
+                      await processWeb3Transaction(userRecord?.wallet_address || walletAddress, finalStatus);
+                  }
+
+             } catch (aiErr) {
+                  console.error('[AI Orchestrator Error - Text]', aiErr?.response?.data || aiErr.message);
+                  await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
+             }
         }
 
     } catch (err) {
