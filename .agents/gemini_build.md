@@ -4,6 +4,268 @@ System Role: You are an expert full-stack and ML systems engineer. Build exactly
 what is specified below, for the role indicated. Do not add features, models,
 or libraries not listed here.
 
+---
+
+# 📊 BUILD PROGRESS TRACKER
+
+> Last updated: 2026-07-22
+
+## Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Fully implemented & working |
+| ⚠️ | Partially implemented / deviation from spec |
+| ❌ | Not started / missing |
+
+---
+
+## 0. Shared Data Model
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `Account` table | ⚠️ | Implemented as `users` in Supabase. Has `id`, `username`, `display_name`, `wallet_address`, `avatar_url`, `cover_url`, `bio`, `created_at`. **Missing spec fields**: `follower_count`, `following_count`, `spam_score`, `status` (active/flagged/suspended). Follows are tracked via a join table instead. |
+| `Post` table | ⚠️ | Implemented as `posts`. Has `id`, `user_id`, `content`, `media_url`, `ai_status` (pending/verified/flagged), `impressions_count`, `created_at`. **Missing spec fields**: `ai_text_label`, `ai_text_confidence`, `image_moderation_status`, `image_labels[]`, `visibility` (public/labeled/blocked). Uses `ai_status` instead of `visibility`. |
+| `Follow` table | ✅ | Implemented as `follows` with `follower_id`, `following_id`, `created_at`. Matches spec. |
+| `Report` table | ❌ | No `reports` table in the Supabase schema. The moderation_service has a stub `db.py` that generates UUIDs but doesn't persist to Postgres. |
+| `Comments` table | ✅ | **Extra** — not in spec. Fully working with RLS. |
+| `Likes` table | ✅ | **Extra** — not in spec. Fully working with unique constraint. |
+| `Reposts` table | ✅ | **Extra** — not in spec. Fully working with unique constraint. |
+| `Notifications` table | ✅ | **Extra** — not in spec. Supports like, comment, follow, repost, verification types. |
+| `Hashtags` + `post_hashtags` tables | ✅ | **Extra** — not in spec. Used for trending feature. |
+| `increment_impression()` RPC | ✅ | **Extra** — Supabase stored function for atomic impression counting. |
+| Postgres + RLS policies | ✅ | All tables have RLS enabled with appropriate policies. |
+| Schema migration scripts | ✅ | `schema.sql`, `schema_update.sql`, `schema_update_v2.sql` — versioned migrations. |
+
+---
+
+## ROLE 1 — Frontend, Backend, Web3
+
+### Tech Stack Comparison
+
+| Spec Requirement | Actual Implementation | Status |
+|------------------|----------------------|--------|
+| Next.js 14, App Router, TypeScript | **Vite + React 19 + JSX** (not TypeScript) | ⚠️ Deviation — functional equivalent, not Next.js |
+| Tailwind CSS | Tailwind v4 via PostCSS | ✅ |
+| wagmi + RainbowKit, SIWE | **ethers.js v6** direct MetaMask integration via custom `Web3Context` | ⚠️ Deviation — no wagmi/RainbowKit/SIWE, but wallet auth works |
+| Next.js API routes as BFF | **Express.js v5** separate backend on port 8000 | ⚠️ Deviation — separate server instead of Next.js API routes |
+| Postgres (Supabase or Neon) | **Supabase** with `@supabase/supabase-js` | ✅ |
+| Cloudflare Turnstile bot protection | ❌ Not implemented | ❌ |
+| Upstash Redis rate limiting | ❌ Not implemented | ❌ |
+| IPFS media storage (web3.storage/Pinata) | ❌ Placeholder URL used (`via.placeholder.com`) | ❌ |
+| nsfwjs client-side pre-check | ❌ Not implemented | ❌ |
+| On-chain anchor contract (PostAnchored event) | ⚠️ `SentinelRegistry.sol` deployed — different design (content registration + verification + token rewards), not a simple PostAnchored event | ⚠️ |
+
+### Frontend — Pages (12 pages built)
+
+| Page | File | Status | Notes |
+|------|------|--------|-------|
+| Home / Feed | `pages/Home.jsx` | ✅ | Feed with post composer, infinite scroll |
+| Login | `pages/Login.jsx` | ✅ | Supabase email/password + Google OAuth |
+| Register | `pages/Register.jsx` | ✅ | Supabase sign-up with wallet address |
+| Profile | `pages/Profile.jsx` | ✅ | Full profile page with edit, avatar, cover, bio, follower/following lists |
+| Post Detail | `pages/PostDetail.jsx` | ✅ | Individual post view with comments |
+| Notifications | `pages/Notifications.jsx` | ✅ | Real-time notification feed (like, comment, follow, repost) |
+| Explore | `pages/Explore.jsx` | ✅ | Discovery/search page |
+| Trending | `pages/TrendingPage.jsx` | ✅ | Trending hashtags + high-engagement posts |
+| Bookmarks | `pages/Bookmarks.jsx` | ⚠️ | Stub — placeholder component |
+| Chat | `pages/Chat.jsx` | ⚠️ | Stub — placeholder component |
+| Studio | `pages/Studio.jsx` | ⚠️ | Stub — placeholder component |
+| Premium | `pages/Premium.jsx` | ⚠️ | Stub — placeholder component |
+
+### Frontend — Components (8 components built)
+
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| AppLayout | `components/AppLayout.jsx` | ✅ | Outlet-based layout wrapper |
+| Sidebar | `components/Sidebar.jsx` | ✅ | Full navigation sidebar with icons (lucide-react) |
+| PostComponents | `components/PostComponents.jsx` | ✅ | Post card with like, comment, repost, impressions, AI status badges |
+| PostComposer | `components/PostComposer.jsx` | ✅ | Text + media upload composer |
+| Dashboard | `components/Dashboard.jsx` | ✅ | Web3 dashboard — wallet connect, $SNTL balance, trust score, airdrop claim |
+| WidgetsPanel | `components/WidgetsPanel.jsx` | ✅ | Right sidebar — trending news, trending hashtags |
+| ThemeToggler | `components/ThemeToggler.jsx` | ✅ | Dark/light theme toggle |
+| VerifiedBadge | `components/VerifiedBadge.jsx` | ✅ | Verification badge component |
+
+### Frontend — Context & Hooks
+
+| Module | File | Status | Notes |
+|--------|------|--------|-------|
+| AuthContext | `context/AuthContext.jsx` | ✅ | Supabase auth with auto-upsert of Google OAuth users into `public.users` |
+| ThemeContext | `context/ThemeContext.jsx` | ✅ | Dark/light mode state management |
+| Web3Context | `context/Web3Context.jsx` | ✅ | MetaMask connection, Sepolia enforcement, contract reads (balanceOf, trustScore, hasClaimedAirdrop), gasless claim via backend relayer |
+| useWallet hook | `hooks/useWallet.js` | ✅ | Wallet connection hook |
+| useIntersectionObserver | `hooks/useIntersectionObserver.js` | ✅ | Viewport observation for impressions tracking |
+| API service | `services/api.js` | ✅ | Axios-based API client for backend calls |
+| Supabase client | `supabaseClient.js` | ✅ | Frontend Supabase client initialization |
+
+### Backend — Express.js API (7 route groups)
+
+| Route Group | Files | Status | Notes |
+|-------------|-------|--------|-------|
+| Posts (`/api/v1/posts`) | `routes/postRoutes.js` + `controllers/postController.js` | ✅ | Create post (with media), get all posts, add comment, get comments, toggle like, toggle repost, increment impressions. AI moderation dispatch to `ai-orchestrator` on media upload. |
+| Users (`/api/v1/users`) | `routes/userRoutes.js` + `controllers/userController.js` | ✅ | Update profile, toggle follow, get social counts, get followers/following lists, get user profile. |
+| Notifications (`/api/v1/notifications`) | `routes/notificationRoutes.js` + `controllers/notificationController.js` | ✅ | Get notifications, mark all as read. |
+| Trending (`/api/v1/trending`) | `routes/trendingRoutes.js` + `controllers/trendingController.js` | ✅ | Aggregate hashtag counts, compute engagement-scored top posts. |
+| News (`/api/v1/news`) | `routes/newsRoutes.js` + `controllers/newsController.js` | ✅ | Cascading news fetch (Currents API → NewsData.io → mock fallback) with 15-min in-memory cache. |
+| Web3 (`/api/v1/web3`) | `routes/web3Routes.js` + `controllers/web3Controller.js` | ✅ | Register post on-chain, render verdict on-chain, get user Web3 state (balance, trustScore, hasClaimed). |
+| Relayer (`/api`) | `routes/relayer.js` | ✅ | Gasless relayer for `verify-content` (register + verdict) and `claim-tokens` (mock gasless airdrop). |
+
+### Backend — Services & Utils
+
+| Module | File | Status | Notes |
+|--------|------|--------|-------|
+| News cascade service | `services/NewsService.js` | ✅ | Multi-provider news with fallback |
+| AI service | `services/aiService.js` | ✅ | Proxy to AI orchestrator |
+| Web3 relayer (services) | `services/web3Relayer.js` | ⚠️ | Scaffolding with simulated calls — TODOs for real contract interaction |
+| Web3 relayer (utils) | `utils/web3Relayer.js` | ✅ | **Fully functional** — ethers.js v6, reads contract state, relays `registerContent` + `updateVerification` |
+| ABI | `utils/abi.js` | ✅ | SentinelRegistry ABI fragment |
+| Ethers config | `config/ethers.js` | ✅ | Provider + wallet + contract initialization |
+| Auth middleware | `middleware/authMiddleware.js` | ✅ | Supabase JWT verification with mock fallback for dev |
+| Supabase client | `supabaseClient.js` | ✅ | Backend Supabase client |
+
+### Smart Contract — `SentinelRegistry.sol`
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| ERC20 token (`$SNTL`) | ✅ | Inherits OpenZeppelin `ERC20` — "Sentinel Token" / "SNTL" |
+| Airdrop claim (`claimInitialTokens`) | ✅ | 500 $SNTL mint per wallet, one-time claim, initializes trust score to 100 |
+| Content registration (`registerContent`) | ✅ | Owner-only, stores `ipfsHash`, `VerificationStatus.PENDING`, `author`, `timestamp` |
+| Verdict rendering (`updateVerification`) | ✅ | Owner-only. VERIFIED → mint 50 SNTL + trust +10. FLAGGED → burn 50 SNTL + trust -30. |
+| Trust score system | ✅ | On-chain mapping `userTrustScores`, updated on verdicts |
+| Events | ✅ | `TokensClaimed`, `ContentRegistered`, `VerdictRendered` |
+| Deployed on Sepolia | ✅ | Contract at `0x460DC3605D19B84b76e17Aa59cfe1E2D28479Cc9` |
+| Hardhat config | ✅ | `hardhat.config.js` present |
+
+### Spec Deliverables vs Actual (Role 1)
+
+| Spec Deliverable | Actual | Status |
+|-----------------|--------|--------|
+| `app/page.tsx` — feed, composer, wallet, Turnstile + nsfwjs | `frontend/src/pages/Home.jsx` + `PostComposer.jsx` + `Dashboard.jsx` — feed + composer + wallet. **No** Turnstile or nsfwjs. | ⚠️ |
+| `app/api/posts/route.ts` — full pipeline | `backend/controllers/postController.js` — creates post, dispatches to AI orchestrator, triggers web3 relayer. **No** Turnstile/Upstash/IPFS steps. | ⚠️ |
+| `app/api/auth/siwe/route.ts` — SIWE | `frontend/src/context/AuthContext.jsx` — Supabase auth (email + Google OAuth). **No SIWE**. | ⚠️ |
+| `contracts/PostAnchor.sol` — event-emitting | `smart-contracts/contracts/SentinelRegistry.sol` — richer contract with tokens + trust. Matches spirit. | ✅ |
+| `lib/db/schema.ts` | `backend/supabase/schema.sql` + updates — SQL-based, not TypeScript. | ✅ |
+| `.env.example` | Present in `moderation_service/` and `ai-orchestrator/`. Backend uses `dotenv`. | ✅ |
+
+---
+
+## ROLE 2 — Text Analysis (AI-generated / Misleading / Fact-Check)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `text_service/app.py` — FastAPI | ❌ | **Not built.** No `text_service/` directory exists. |
+| `text_service/detector.py` — AI-text detector (`desklib/ai-text-detector-v1.01`) | ❌ | Not implemented. |
+| `text_service/factcheck.py` — claim extraction + hybrid retrieval (BM25 + BGE + FAISS) + LLM verdict | ❌ | Not implemented. |
+| `text_service/requirements.txt` | ❌ | Not created. |
+| `POST /analyze/text` endpoint | ❌ | Not implemented. |
+| Cross-role integration: Role 3 forwards `misleading` reports to Role 2 | ⚠️ | Code exists in `moderation_service/reports.py` to forward to `ROLE2_SERVICE_URL`, but the target service doesn't exist. |
+
+**Role 2 Summary: 0% complete — entire text analysis service is unbuilt.**
+
+---
+
+## ROLE 3 — Spam, Abuse & Visual Moderation
+
+### Moderation Service (`moderation_service/`)
+
+| Module | File | Status | Notes |
+|--------|------|--------|-------|
+| FastAPI app | `app.py` | ✅ | All 3 endpoints: `/moderate/image`, `/moderate/account-score`, `/report`. Pydantic schemas match cross-role contract. Runs on port 8002. |
+| NudeNet NSFW detector | `nsfw.py` | ✅ | NudeNet v3 via ONNX Runtime. Explicit labels defined. Threshold logic: >60% → blocked, 18-60% or suggestive → `sensitive_content`. Lazy-loaded. |
+| Deepfake detection | `deepfake.py` | ✅ | `prithivMLmods/deepfake-detector-model-v1` (SigLIP2) on full image + YOLOv8n-face crop. Affine-warp with eye keypoints, 20% margin crop, max(full, face) confidence. >65% → `ai_generated_image`. All CPU, lazy-loaded. |
+| C2PA provenance | `provenance.py` | ✅ | `c2pa-python` read-only. Manifest found → `disclosed_ai_content`. Never blocks. |
+| Spam scoring | `spam_score.py` | ✅ | Weighted heuristic: 0.40×follow_spam_ratio + 0.25×age_velocity + 0.20×duplicate_ratio + 0.15×report_count_normalized. Bands: <40 clean, 40-75 flagged, >75 auto_suspend. Auto-suspend persists to DB. |
+| Report routing | `reports.py` | ✅ | Insert report → `misleading` forwards to Role 2 → other reasons trigger account-score recompute. Returns `{ report_id, routed_to }`. |
+| DB access layer | `db.py` | ⚠️ | **Stub implementation** — returns safe defaults, generates UUIDs, logs queries. Not connected to live Supabase/Postgres. Documented SQL queries for Role 0 to implement. |
+| `.env.example` | ✅ | HF_TOKEN, ROLE2_SERVICE_URL, SUPABASE credentials, PORT. |
+| `requirements.txt` | ✅ | fastapi, uvicorn, python-dotenv, httpx, onnxruntime, nudenet, transformers, torch, ultralytics, opencv-python-headless, c2pa-python, numpy, Pillow. |
+| Python venv | ✅ | `venv/` directory present. |
+
+### Test Suite (`moderation_service/tests/`)
+
+| Test File | Status | Notes |
+|-----------|--------|-------|
+| `conftest.py` | ✅ | Pytest fixtures for FastAPI test client |
+| `smoke_test.py` | ✅ | Basic endpoint smoke tests |
+| `test_moderate_image.py` | ✅ | Comprehensive image moderation pipeline tests |
+| `test_account_score.py` | ✅ | Account scoring heuristic tests |
+| `test_report.py` | ✅ | Report creation + routing tests |
+| `test_local_image.py` | ✅ | Local image file testing |
+| `requirements-test.txt` | ✅ | Test dependencies |
+
+### Moderation Pipeline Compliance
+
+| Pipeline Step | Spec Requirement | Status |
+|---------------|-----------------|--------|
+| Step 1: NudeNet | Explicit >60% → blocked, halt. 18-60% or suggestive → `sensitive_content`. | ✅ |
+| Step 2: c2pa | Manifest found → `disclosed_ai_content`. Never halt. | ✅ |
+| Step 3: Full-image deepfake | `prithivMLmods/deepfake-detector-model-v1`. Fake >65% → `ai_generated_image`. | ✅ |
+| Step 4: Face-level deepfake | YOLOv8n-face (conf 0.25). Keypoints → affine-warp → crop 20% margin. Max(full, face). | ✅ |
+| Step 5: Final verdict | Return `{ status, labels[], deepfake_confidence, disclosed_ai_content }`. Write to Post. | ✅ |
+| Sequential early-exit | NudeNet blocked → halt before c2pa/deepfake. | ✅ |
+| CPU enforcement | `device="cpu"` on all model loads. | ✅ |
+| Debug prints | `print()` at each pipeline phase. | ✅ |
+
+**Role 3 Summary: ~90% complete — all pipeline logic implemented and tested. Only gap is `db.py` uses stubs instead of live Supabase connection.**
+
+---
+
+## AI Orchestrator (`ai-orchestrator/`)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `app.py` — FastAPI app | ⚠️ | **Stub/mock only.** Single endpoint `POST /api/v1/analyze` that sleeps 2s and returns `{ is_fake: false, confidence: 0.94, reasoning: "..." }`. No real AI inference. |
+| `config.py` — Settings | ✅ | Pydantic-based config with `FASTAPI_PORT`, `NETWORK_RPC_URL`, `CONTRACT_ADDRESS`, `TRUST_SCORE_THRESHOLD`. Validates Ethereum address format. |
+| `.env.example` | ✅ | Config template present. |
+| `requirements.txt` | ✅ | fastapi, uvicorn, pydantic-settings. |
+| Integration with moderation_service | ❌ | Orchestrator does not call moderation_service or text_service. Post controller calls orchestrator directly for media analysis. |
+
+**AI Orchestrator Summary: ~20% complete — config is solid, but the core logic is mocked.**
+
+---
+
+## Cross-Role API Contract
+
+| Contract | Status | Notes |
+|----------|--------|-------|
+| `Role 1 → Role 2: POST /analyze/text` | ❌ | Role 2 service doesn't exist. Backend's `postController.js` calls the AI orchestrator instead (`/api/v1/analyze`), not the text service. |
+| `Role 1 → Role 3: POST /moderate/image` | ⚠️ | Moderation service endpoint fully built & tested. Backend doesn't call it directly — instead calls the AI orchestrator. Integration not wired. |
+| `Role 1 → Role 3: POST /moderate/account-score` | ⚠️ | Moderation service endpoint fully built & tested. Backend doesn't call it. |
+| `Any → Role 3: POST /report` | ⚠️ | Moderation service endpoint fully built & tested. No frontend or backend caller yet. |
+
+---
+
+## Extra Features (Beyond Spec)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Google OAuth login | ✅ | Via Supabase Auth |
+| Notification system | ✅ | Like, comment, follow, repost triggers with read/unread |
+| Hashtag extraction + trending | ✅ | Auto-extract `#tags` from posts, aggregate for trending |
+| Impression tracking | ✅ | IntersectionObserver + Supabase RPC |
+| News feed widget | ✅ | Cascading API (Currents → NewsData → mock fallback) with caching |
+| Dark/light theme | ✅ | ThemeContext + ThemeToggler |
+| $SNTL ERC20 token economy | ✅ | Airdrop, mint/burn on verdicts, trust scores |
+| Gasless relayer | ✅ | Backend signs transactions on behalf of users |
+| Test images | ✅ | Real + AI-generated test images in `images/` directory |
+
+---
+
+## Overall Progress Summary
+
+| Role | Completion | Key Gaps |
+|------|-----------|----------|
+| **Role 1 — Frontend** | **~80%** | Missing: Turnstile, nsfwjs, IPFS upload. Stubs for Bookmarks/Chat/Studio/Premium. |
+| **Role 1 — Backend** | **~75%** | Missing: Turnstile verification, Upstash rate limiting, IPFS upload, wiring to Role 2/3 services. |
+| **Role 1 — Web3** | **~90%** | Contract deployed, relayer functional, wallet integration works. Deviation from spec (richer than PostAnchor). |
+| **Role 2 — Text Analysis** | **0%** | Entire service unbuilt. |
+| **Role 3 — Moderation** | **~90%** | All pipeline logic implemented + tested. DB layer uses stubs. |
+| **AI Orchestrator** | **~20%** | Config ready, app is mocked. |
+| **Cross-Role Integration** | **~10%** | Contracts defined, endpoints built on Role 3 side, but not wired from Role 1. |
+| **Database Schema** | **~70%** | Working schema with extras, but missing spec fields (spam_score, status, visibility, image_labels, etc.) |
+
+---
+
 ## 0. Shared Data Model (all roles read/write this)
 
 ```
