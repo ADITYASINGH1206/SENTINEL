@@ -27,7 +27,7 @@ Your teammate will provide you with a `.env` file.
 - It contains the `RPC_URL`, `RELAYER_PRIVATE_KEY`, and `CONTRACT_ADDRESS` needed for the backend to execute on-chain transactions.
 
 ### 2. Install Dependencies
-Open three terminal windows.
+Open four terminal windows.
 
 **Terminal 1 (Backend - Node.js):**
 ```bash
@@ -44,8 +44,26 @@ npm install
 **Terminal 3 (AI Orchestrator - Python):**
 ```bash
 cd ai-orchestrator
+python -m venv venv
+# If using Command Prompt / PowerShell:
+venv\Scripts\activate
+# If using Git Bash / Mac / Linux:
+source venv/Scripts/activate
+
 pip install -r requirements.txt
 # Requires GOOGLE_API_KEY, GROQ_API_KEY, OPENAI_API_KEY in .env
+```
+
+**Terminal 4 (Moderation Service - Python):**
+```bash
+cd moderation_service
+python -m venv venv
+# If using Command Prompt / PowerShell:
+venv\Scripts\activate
+# If using Git Bash / Mac / Linux:
+source venv/Scripts/activate
+
+pip install -r requirements.txt
 ```
 
 ### 3. Run the Development Servers
@@ -92,11 +110,11 @@ python app.py
 
 ### 4. How to Close the Project
 
-To safely shut down the servers, navigate to each of the three terminal windows you opened and press:
+To safely shut down the servers, navigate to each of the four terminal windows you opened and press:
 
 **`Ctrl + C`** (Windows/Linux) or **`Cmd + C`** (Mac)
 
-If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all three terminals, the entire project will be closed.
+If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all four terminals, the entire project will be closed.
 
 ---
 
