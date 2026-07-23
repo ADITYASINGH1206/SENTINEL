@@ -7,7 +7,7 @@ import { apiFetch } from '../services/api';
 
 export default function Profile() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, setDbUser } = useAuth();
   const profileId = id || user?.id;
   const isOwnProfile = profileId === user?.id;
   
@@ -22,6 +22,7 @@ export default function Profile() {
   
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ bio: '', avatar_url: '', cover_url: '', wallet_address: '' });
+  const [avatarFile, setAvatarFile] = useState(null);
 
   // Social Modal State
   const [showSocialModal, setShowSocialModal] = useState(null); // 'followers' | 'following' | null
@@ -91,14 +92,25 @@ export default function Profile() {
 
   const handleEditSave = async () => {
       try {
+          const formData = new FormData();
+          formData.append('bio', editForm.bio || '');
+          formData.append('wallet_address', editForm.wallet_address || '');
+          formData.append('cover_url', editForm.cover_url || '');
+          if (avatarFile) {
+              formData.append('avatar_file', avatarFile);
+          } else if (editForm.avatar_url) {
+              formData.append('avatar_url', editForm.avatar_url);
+          }
+          
           const res = await apiFetch('/api/v1/users/profile', {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(editForm)
+              body: formData
           });
           if (res.success) {
               setProfileUser(res.user);
+              if (setDbUser) setDbUser(res.user);
               setShowEditModal(false);
+              setAvatarFile(null);
           }
       } catch (err) {
           console.error(err);
@@ -127,7 +139,7 @@ export default function Profile() {
          </div>
          
          <div className="px-4 flex justify-between items-start">
-             <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + profileUser.username} alt="Avatar" className="w-32 h-32 bg-gray-900 rounded-full border-4 border-gray-900 -mt-16 relative" />
+             <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username; }} alt="Avatar" className="w-32 h-32 bg-gray-900 rounded-full border-4 border-gray-900 -mt-16 relative" />
              <div className="mt-4">
                  {isOwnProfile ? (
                      <button onClick={() => { setEditForm(profileUser); setShowEditModal(true); }} className="border border-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-full transition">Edit Profile</button>
@@ -184,8 +196,28 @@ export default function Profile() {
                           <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent font-mono text-sm" value={editForm.wallet_address || ''} onChange={e=>setEditForm({...editForm, wallet_address: e.target.value})} />
                       </div>
                       <div>
-                          <label className="text-sm text-gray-400">Avatar Image URL</label>
-                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.avatar_url || ''} onChange={e=>setEditForm({...editForm, avatar_url: e.target.value})} />
+                          <label className="text-sm text-gray-400 mb-2 block">Select Avatar</label>
+                          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                              {['Felix', 'Aneka', 'Oliver', 'Jude', 'Leo', 'Molly', 'Coco', 'Oscar', 'Jasper', 'Bandit', 'Lily', 'Mia', 'Chloe', 'Zoe', 'Sophia', 'Ava', 'Isabella', 'Emma', 'Avery', 'Riley', 'Aria'].map(seed => {
+                                  const url = `https://api.dicebear.com/7.x/micah/svg?seed=${seed}`;
+                                  const isSelected = editForm.avatar_url === url && !avatarFile;
+                                  return (
+                                      <img 
+                                          key={seed} 
+                                          src={url} 
+                                          alt={seed}
+                                          onClick={() => { setEditForm({...editForm, avatar_url: url}); setAvatarFile(null); }}
+                                          className={`w-14 h-14 rounded-full cursor-pointer transition-all flex-shrink-0 border-2 ${isSelected ? 'border-blue-500 bg-gray-800 scale-110 shadow-lg shadow-blue-500/20' : 'border-transparent hover:bg-gray-800 hover:scale-105 bg-gray-900/50'}`}
+                                      />
+                                  );
+                              })}
+                          </div>
+                          
+                          <label className="text-sm text-gray-400 mt-4 block">Or Upload Your Own Photo</label>
+                          <input type="file" accept="image/*" onChange={(e) => { if(e.target.files[0]) { setAvatarFile(e.target.files[0]); setEditForm({...editForm, avatar_url: ''}); } }} className="w-full bg-gray-800 p-2 rounded mt-1 outline-none text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20" />
+
+                          <label className="text-sm text-gray-400 mt-4 block">Or Paste Image URL</label>
+                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.avatar_url || ''} onChange={e=>{ setEditForm({...editForm, avatar_url: e.target.value}); setAvatarFile(null); }} placeholder="https://..." />
                       </div>
                       <div>
                           <label className="text-sm text-gray-400">Cover Image URL</label>
@@ -224,7 +256,7 @@ export default function Profile() {
                                       onClick={() => setShowSocialModal(null)}
                                       className="flex items-center gap-3 hover:bg-gray-800 p-2 rounded-xl transition"
                                   >
-                                      <img src={u.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + u.username} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
+                                      <img src={u.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + u.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + u.username; }} alt="Avatar" className="w-12 h-12 bg-gray-700 rounded-full flex-shrink-0" />
                                       <div className="min-w-0 flex-1">
                                           <div className="font-bold text-[15px] truncate text-white">{u.display_name || u.username}</div>
                                           <div className="text-gray-500 text-[15px] truncate">@{u.username}</div>

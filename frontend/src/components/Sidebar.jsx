@@ -6,7 +6,7 @@ import { Web3Context } from '../context/Web3Context';
 import ThemeToggler from './ThemeToggler';
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, dbUser, logout } = useAuth();
   const { account, balance, hasClaimedAirdrop, isConnecting, claimStatus, claimTxHash, connectWallet, claimAirdrop, addTokenToWallet } = React.useContext(Web3Context);
   const location = useLocation();
   const [showLogout, setShowLogout] = useState(false);
@@ -103,10 +103,10 @@ export default function Sidebar() {
             )}
             <div className="flex items-center justify-center sm:justify-between p-3 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-900 transition cursor-pointer w-full group" onClick={() => setShowLogout(!showLogout)}>
                <div className="flex items-center gap-3 min-w-0">
-                  <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user?.email} alt="Avatar" className="w-10 h-10 rounded-full bg-gray-300 dark:bg-zinc-700 flex-shrink-0" />
+                  <img src={dbUser?.avatar_url || user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + (dbUser?.username || user?.email?.split('@')[0])} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + (dbUser?.username || user?.email?.split('@')[0]); }} alt="Avatar" className="w-10 h-10 rounded-full bg-gray-300 dark:bg-zinc-700 flex-shrink-0" />
                   <div className="hidden sm:flex flex-col leading-tight min-w-0">
-                     <span className="font-bold text-[15px] max-w-[120px] xl:max-w-[160px] truncate">{user?.user_metadata?.full_name || user?.email?.split('@')[0]}</span>
-                     <span className="text-gray-500 text-[15px] truncate">@{user?.user_metadata?.username || user?.email?.split('@')[0]}</span>
+                     <span className="font-bold text-[15px] max-w-[120px] xl:max-w-[160px] truncate">{dbUser?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0]}</span>
+                     <span className="text-gray-500 text-[15px] truncate">@{dbUser?.username || user?.user_metadata?.username || user?.email?.split('@')[0]}</span>
                   </div>
                </div>
                <CircleEllipsis size={18} className="hidden sm:block text-gray-900 dark:text-white flex-shrink-0" />

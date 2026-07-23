@@ -73,12 +73,12 @@ async function checkNsfw(file) {
 // PostComposer
 // ---------------------------------------------------------------------------
 export default function PostComposer({ onPostSubmit }) {
+  const { user, dbUser } = useAuth();
   const [content, setContent] = useState('');
   const [files, setFiles] = useState([]);
   const [nsfwStatuses, setNsfwStatuses] = useState([]);
   const [checkingNsfw, setCheckingNsfw] = useState(false);
   const fileInputRef = useRef(null);
-  const { user } = useAuth();
   const { account } = useContext(Web3Context);
 
   const handleFileChange = useCallback(async (e) => {
@@ -154,7 +154,7 @@ export default function PostComposer({ onPostSubmit }) {
   return (
     <div className="border-b border-gray-200 dark:border-zinc-800 p-4 pb-2">
       <div className="flex gap-4">
-        <img src={user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user?.email} alt="Avatar" className="w-10 h-10 bg-gray-200 dark:bg-zinc-700 rounded-full flex-shrink-0" />
+        <img src={dbUser?.avatar_url || user?.user_metadata?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + (dbUser?.username || user?.email?.split('@')[0])} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + (dbUser?.username || user?.email?.split('@')[0]); }} alt="Avatar" className="w-10 h-10 bg-gray-200 dark:bg-zinc-700 rounded-full flex-shrink-0" />
         <div className="flex-grow flex flex-col pt-1">
           <textarea 
              className="w-full bg-transparent text-xl outline-none resize-none placeholder-gray-500 dark:placeholder-gray-500 text-gray-900 dark:text-white min-h-[40px] overflow-hidden" 
