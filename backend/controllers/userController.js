@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.js';
+import { moderateAccountScore } from '../services/moderationService.js';
 
 export const updateProfile = async (req, res) => {
     try {
@@ -50,6 +51,12 @@ export const toggleFollow = async (req, res) => {
             });
             
             const { count: followerCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', followingId);
+
+            // Role 3: Recompute account spam score on new follow (fire-and-forget)
+            moderateAccountScore(followingId).catch(err =>
+                console.warn('[Moderation] Account score recompute failed:', err.message)
+            );
+
             res.json({ success: true, action: 'followed', followerCount, isFollowing: true });
         }
     } catch(err) {

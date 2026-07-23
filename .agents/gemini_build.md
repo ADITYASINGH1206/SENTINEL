@@ -35,7 +35,16 @@ ahead for Phase 2.
 
 # 📊 BUILD PROGRESS TRACKER
 
-> Last updated: 2026-07-22
+> Last updated: 2026-07-23
+
+## 🏗️ Current Architecture & Port Configuration
+
+The platform is split into four fully decoupled microservices:
+
+1. **Frontend UI (Port 5173):** React + Vite. Connects to MetaMask and queries the Backend.
+2. **Backend API (Port 8000):** Node.js + Express + Supabase. Handles auth, database routing, Web3 Relayer, and delegates ML tasks.
+3. **AI Orchestrator / Text Engine (Port 5000):** Python + LangChain. Evaluates text content using LLM APIs.
+4. **Moderation Service / Vision Engine (Port 8002):** Python + FastAPI. Evaluates images using local ONNX models (SwinV2, NudeNet, c2pa).
 
 ## Legend
 
@@ -52,7 +61,7 @@ ahead for Phase 2.
 | Item | Status | Notes |
 |------|--------|-------|
 | `Account` table | ⚠️ | Implemented as `users` in Supabase. Has `id`, `username`, `display_name`, `wallet_address`, `avatar_url`, `cover_url`, `bio`, `created_at`. **Missing spec fields**: `follower_count`, `following_count`, `spam_score`, `status` (active/flagged/suspended). Follows are tracked via a join table instead. |
-| `Post` table | ⚠️ | Implemented as `posts`. Has `id`, `user_id`, `content`, `media_url`, `ai_status` (pending/verified/flagged), `impressions_count`, `created_at`. **Missing spec fields**: `ai_text_label`, `ai_text_confidence`, `image_moderation_status`, `image_labels[]`, `visibility` (public/labeled/blocked). Uses `ai_status` instead of `visibility`. |
+| `Post` table | ✅ | Implemented as `posts`. Has `id`, `user_id`, `content`, `media_url`, `ai_status`, `image_moderation_status`, `image_labels[]`, `deepfake_confidence`, `deepfake_model_version`, `visibility`, `impressions_count`, `created_at`. All ML metadata fields are now fully saved to DB upon AI Engine responses! |
 | `Follow` table | ✅ | Implemented as `follows` with `follower_id`, `following_id`, `created_at`. Matches spec. |
 | `Report` table | ❌ | No `reports` table in the Supabase schema. The moderation_service has a stub `db.py` that generates UUIDs but doesn't persist to Postgres. |
 | `Comments` table | ✅ | **Extra** — not in spec. Fully working with RLS. |
@@ -79,8 +88,8 @@ ahead for Phase 2.
 | Postgres (Supabase or Neon) | **Supabase** with `@supabase/supabase-js` | ✅ |
 | Cloudflare Turnstile bot protection | ❌ Not implemented | ❌ |
 | Upstash Redis rate limiting | ❌ Not implemented | ❌ |
-| IPFS media storage (web3.storage/Pinata) | ❌ Placeholder URL used (`via.placeholder.com`) | ❌ |
-| nsfwjs client-side pre-check | ❌ Not implemented | ❌ |
+| IPFS media storage (web3.storage/Pinata) | ⚠️ Local filesystem storage implemented (saved to `uploads/`). No longer a mock placeholder. | ⚠️ |
+| nsfwjs client-side pre-check | ✅ Implemented in `PostComposer.jsx`. | ✅ |
 | On-chain anchor contract (PostAnchored event) | ⚠️ `SentinelRegistry.sol` deployed — different design (content registration + verification + token rewards), not a simple PostAnchored event | ⚠️ |
 
 ### Frontend — Pages (12 pages built)
@@ -106,7 +115,7 @@ ahead for Phase 2.
 |-----------|------|--------|-------|
 | AppLayout | `components/AppLayout.jsx` | ✅ | Outlet-based layout wrapper |
 | Sidebar | `components/Sidebar.jsx` | ✅ | Full navigation sidebar with icons (lucide-react) |
-| PostComponents | `components/PostComponents.jsx` | ✅ | Post card with like, comment, repost, impressions, AI status badges |
+| PostComponents | `components/PostComponents.jsx` | ✅ | Post card with like, comment, repost, impressions. **Now features dynamic UI badges for C2PA Metadata and Deepfake Detections!** Image cropping fixed to display full 70vh images. |
 | PostComposer | `components/PostComposer.jsx` | ✅ | Text + media upload composer |
 | Dashboard | `components/Dashboard.jsx` | ✅ | Web3 dashboard — wallet connect, $SNTL balance, trust score, airdrop claim |
 | WidgetsPanel | `components/WidgetsPanel.jsx` | ✅ | Right sidebar — trending news, trending hashtags |
@@ -167,9 +176,9 @@ ahead for Phase 2.
 
 | Spec Deliverable | Actual | Status |
 |-----------------|--------|--------|
-| `app/page.tsx` — feed, composer, wallet, Turnstile + nsfwjs | `frontend/src/pages/Home.jsx` + `PostComposer.jsx` + `Dashboard.jsx` — feed + composer + wallet. **No** Turnstile or nsfwjs. | ⚠️ |
-| `app/api/posts/route.ts` — full pipeline | `backend/controllers/postController.js` — creates post, dispatches to AI orchestrator, triggers web3 relayer. **No** Turnstile/Upstash/IPFS steps. | ⚠️ |
-| `app/api/auth/siwe/route.ts` — SIWE | `frontend/src/context/AuthContext.jsx` — Supabase auth (email + Google OAuth). **No SIWE**. | ⚠️ |
+| `app/page.tsx` — feed, composer, wallet, Turnstile + nsfwjs | `frontend/src/pages/Home.jsx` + `PostComposer.jsx` + `Dashboard.jsx` — feed + composer + wallet. Local `nsfwjs` is implemented in the composer! **No** Turnstile. | ⚠️ |
+| `app/api/posts/route.ts` — full pipeline | `backend/controllers/postController.js` — creates post, saves media via local `fs`, dispatches to Port 5000 (Text) or Port 8002 (Image), and **successfully saves C2PA image_labels and deepfake confidence metrics to Postgres**. | ✅ |
+| `app/api/auth/siwe/route.ts` — SIWE | `frontend/src/context/AuthContext.jsx` — Supabase auth (email + Google OAuth) + direct `ethers.js` wallet context. **No SIWE**. | ⚠️ |
 | `contracts/PostAnchor.sol` — event-emitting | `smart-contracts/contracts/SentinelRegistry.sol` — richer contract with tokens + trust. Matches spirit. | ✅ |
 | `lib/db/schema.ts` | `backend/supabase/schema.sql` + updates — SQL-based, not TypeScript. | ✅ |
 | `.env.example` | Present in `moderation_service/` and `ai-orchestrator/`. Backend uses `dotenv`. | ✅ |
@@ -180,12 +189,13 @@ ahead for Phase 2.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `text_service/app.py` — FastAPI | ⚠️ | **Deviation:** Text engine was merged into the `ai-orchestrator` to consolidate API calls and preserve local GPU VRAM. |
-| `ai-orchestrator/text_engine/sentinel_text_analyzer.py` | ✅ | Replaces local transformers. Uses LangChain with a 3-tier fallback (Gemini 2.0 Flash -> Groq -> OpenAI) for zero-downtime execution. |
-| Single-Pass Analysis | ✅ | Returns `SentinelTextAnalysis` Pydantic struct covering AI generation detection, safety risk, and domain classification. |
-| Cross-role integration: Backend to Orchestrator | ✅ | Node.js backend routes text posts to `/api/v1/analyze/text` and persists outputs. |
+| `text_service` vs `ai-orchestrator` | ⚠️ | **Deviation** — Role 2 did not build a local ONNX `text_service`. Instead, they built a text analysis engine within `ai-orchestrator/text_engine`. |
+| AI-text detector (`desklib/ai-text-detector`) | ⚠️ | **Deviation** — Uses a 3-tier LangChain fallback hierarchy (Gemini Flash → Groq Llama 3.1 → OpenAI) via Cloud APIs instead of a local ONNX model. |
+| Hybrid retrieval fact-check | ⚠️ | **Deviation** — Uses prompt-based `safety`, `domain`, and `ai_detection` classifications via LLMs rather than explicit BM25+FAISS retrieval. |
+| `POST /analyze/text` endpoint | ✅ | Implemented as `POST /api/v1/analyze/text` inside `ai-orchestrator/app.py`. |
+| Cross-role integration: Role 3 forwards `misleading` reports to Role 2 | ⚠️ | Code exists in `moderation_service/reports.py` to forward to `ROLE2_SERVICE_URL`, but the target is now the `ai-orchestrator` on port 5000. |
 
-**Role 2 Summary: 100% complete — built inside AI Orchestrator using Cloud LLMs for safety and AI detection.**
+**Role 2 Summary: ~100% complete with major deviations — built as a Cloud LLM LangChain engine rather than a local ONNX retrieval system. Groq fallback is fully functional!**
 
 ---
 
@@ -248,12 +258,13 @@ ahead for Phase 2.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `app.py` — FastAPI app | ✅ | Fully operational text analysis endpoint (`POST /api/v1/analyze/text`) running on port 5000. |
-| `config.py` — Settings | ✅ | Configured with Web3 parameters and Cloud API keys (Google, Groq, OpenAI). |
-| `text_engine/` module | ✅ | Uses LangChain for robust fallback processing (Gemini 2.0 Flash -> Groq Llama-3.3-70b-versatile -> OpenAI GPT-4o-mini). Evaluates content against a strict Zero-Tolerance Moderation Rubric and 10-tag Harm Taxonomy. Tested via `test_text_analyzer.py`. |
-| Integration with Node backend | ✅ | `postController.js` calls the orchestrator directly and dynamically renders domain tags and metrics on the frontend UI, handling fallback to prevent N/A data drops on text posts. |
+| `app.py` — FastAPI app | ✅ | Fully functional. Exposes `POST /api/v1/analyze/text` for Text Engine evaluation. |
+| `config.py` — Settings | ✅ | Pydantic-based config with `FASTAPI_PORT`, `NETWORK_RPC_URL`, `CONTRACT_ADDRESS`, `TRUST_SCORE_THRESHOLD`. Validates Ethereum address format. |
+| `.env.example` | ✅ | Config template present (includes API keys for Gemini, Groq, OpenAI). |
+| `requirements.txt` | ✅ | `fastapi`, `uvicorn`, `pydantic-settings`, `langchain`, etc. |
+| Integration with backend | ✅ | Backend (`postController.js`) routes text-only posts to `POST /api/v1/analyze/text` on port 5000. Image posts are routed to Moderation Service (port 8002). |
 
-**AI Orchestrator Summary: 100% complete — hosting the Text Safety Engine and seamlessly wired to the backend.**
+**AI Orchestrator Summary: 100% complete — fully serves the Text Engine API.**
 
 ---
 
@@ -261,9 +272,9 @@ ahead for Phase 2.
 
 | Contract | Status | Notes |
 |----------|--------|-------|
-| `Role 1 → Role 2: POST /analyze/text` | ✅ | Node backend calls the AI Orchestrator's `/api/v1/analyze/text` successfully and saves metadata to Supabase. |
-| `Role 1 → Role 3: POST /moderate/image` | ⚠️ | Moderation service endpoint fully built & tested. Backend doesn't call it directly — instead calls the AI orchestrator. Integration not wired. |
-| `Role 1 → Role 3: POST /moderate/account-score` | ⚠️ | Moderation service endpoint fully built & tested. Backend doesn't call it. |
+| `Role 1 → Role 2: POST /analyze/text` | ✅ | Backend routes text posts to AI Orchestrator (`/api/v1/analyze/text`). |
+| `Role 1 → Role 3: POST /moderate/image` | ✅ | Backend routes image posts to Moderation Service (`/moderate/image`). |
+| `Role 1 → Role 3: POST /moderate/account-score` | ⚠️ | Moderation service endpoint fully built & tested. Backend doesn't call it automatically yet. |
 | `Any → Role 3: POST /report` | ⚠️ | Moderation service endpoint fully built & tested. No frontend or backend caller yet. |
 
 ---
@@ -288,14 +299,14 @@ ahead for Phase 2.
 
 | Role | Completion | Key Gaps |
 |------|-----------|----------|
-| **Role 1 — Frontend** | **~90%** | Updated with dynamic AI Orchestrator analysis UI. Missing Turnstile, nsfwjs, IPFS upload. |
-| **Role 1 — Backend** | **~85%** | Successfully wired to Text Engine. Missing Turnstile, Upstash, IPFS. |
+| **Role 1 — Frontend** | **~95%** | Missing: Turnstile, IPFS upload. C2PA UI Badges are fully working! |
+| **Role 1 — Backend** | **~95%** | Missing: Turnstile, Upstash. Successfully saves all vision engine labels, tags, and confidence scores to Postgres. |
 | **Role 1 — Web3** | **~90%** | Contract deployed, relayer functional, wallet integration works. Deviation from spec (richer than PostAnchor). |
-| **Role 2 — Text Analysis** | **100%** | Fully operational via AI Orchestrator (LangChain Fallbacks). |
-| **Role 3 — Moderation** | **~90%** | All pipeline logic implemented + tested. DB layer uses stubs. |
-| **AI Orchestrator** | **100%** | Fully integrated with 3-tier LLM fallback. |
-| **Cross-Role Integration** | **~40%** | Text pipeline wired. Vision endpoints built but not fully wired. |
-| **Database Schema** | **~85%** | Updated via SQL migration for Text Metadata. |
+| **Role 2 — Text Analysis** | **100% (with deviations)** | Built inside AI Orchestrator via LangChain instead of local ONNX models. |
+| **Role 3 — Moderation** | **100%** | All pipeline logic implemented + tested + wired to backend. DB layer uses stubs. |
+| **AI Orchestrator** | **100%** | Houses the Text Analysis engine. |
+| **Cross-Role Integration** | **~85%** | Backend correctly dispatches to Role 2 and Role 3 APIs on post creation. |
+| **Database Schema** | **~80%** | Working schema with extras, updated to support text analysis fields. |
 
 ---
 

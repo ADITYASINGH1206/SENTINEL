@@ -27,7 +27,7 @@ Your teammate will provide you with a `.env` file.
 - It contains the `RPC_URL`, `RELAYER_PRIVATE_KEY`, and `CONTRACT_ADDRESS` needed for the backend to execute on-chain transactions.
 
 ### 2. Install Dependencies
-Open three terminal windows.
+Open four terminal windows.
 
 **Terminal 1 (Backend - Node.js):**
 ```bash
@@ -44,39 +44,65 @@ npm install
 **Terminal 3 (AI Orchestrator - Python):**
 ```bash
 cd ai-orchestrator
+python -m venv venv
+source venv/Scripts/activate
+
 pip install -r requirements.txt
 # Requires GOOGLE_API_KEY, GROQ_API_KEY, OPENAI_API_KEY in .env
 ```
 
+**Terminal 4 (Moderation Service - Python):**
+```bash
+cd moderation_service
+python -m venv venv
+source venv/Scripts/activate
+
+pip install -r requirements.txt
+```
+
 ### 3. Run the Development Servers
 
-Start all three servers simultaneously in their respective terminals:
+Start all four servers simultaneously in their respective terminals:
 
 **Backend:**
 ```bash
+cd backend
 npm run dev
 # Expected output: 🚀 Sentinel Node.js Backend running on port 8000
 ```
 
 **Frontend:**
 ```bash
+cd frontend
 npm run dev
 # Expected output: ➜  Local: http://localhost:5173/
 ```
 
+**Moderation Service:**
+```bash
+cd moderation_service
+source venv/Scripts/activate
+
+python app.py
+# Expected output: INFO:     Uvicorn running on http://0.0.0.0:8002
+```
+
 **AI Orchestrator:**
 ```bash
-python -m uvicorn app:app --port 5000 --reload
+cd ai-orchestrator
+source venv/Scripts/activate
+
+python app.py
 # Expected output: Uvicorn running on http://0.0.0.0:5000
 ```
 
 ### 4. How to Close the Project
 
-To safely shut down the servers, navigate to each of the three terminal windows you opened and press:
+To safely shut down the servers, navigate to each of the four terminal windows you opened and press:
 
 **`Ctrl + C`** (Windows/Linux) or **`Cmd + C`** (Mac)
 
-If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all three terminals, the entire project will be closed.
+If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all four terminals, the entire project will be closed.
 
 ---
 
@@ -88,7 +114,6 @@ The platform features a **3-tier LangChain Fallback Hierarchy** (Gemini 2.0 Flas
 3. **Domain Classification:** Categorizes the text by topic (e.g., Politics, Tech).
 
 The backend automatically routes text posts to this engine and renders the resulting scores and tags seamlessly in the frontend UI.
-
 ---
 
 ## 🧪 Testing the "Proof of Integrity" Flow

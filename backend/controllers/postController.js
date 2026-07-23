@@ -1,42 +1,40 @@
 import { supabase } from '../supabaseClient.js';
 import axios from 'axios';
 import FormData from 'form-data';
+import { moderateImage } from '../services/moderationService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { relayContentRegistration, relayUpdateVerification } from '../utils/web3Relayer.js';
 import { saveTxHash, getTxHash } from '../utils/txStore.js';
 import crypto from 'crypto';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const createPost = async (req, res) => {
     try {
         const { content, walletAddress } = req.body;
         const userId = req.user.id;
         
-        let mediaUrl = null;
-        if (req.file) {
-             const fileExt = req.file.originalname.split('.').pop();
-             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-             
-             const { data: uploadData, error: uploadError } = await supabase.storage
-                 .from('media')
-                 .upload(fileName, req.file.buffer, {
-                     contentType: req.file.mimetype,
-                     upsert: false
-                 });
-                 
-             if (uploadError) {
-                 console.error("Supabase Upload Error:", uploadError);
-                 throw new Error("Failed to upload media");
+        let mediaUrls = [];
+        if (req.files && req.files.length > 0) {
+             const uploadsDir = path.join(__dirname, '..', 'uploads');
+             if (!fs.existsSync(uploadsDir)) {
+                 fs.mkdirSync(uploadsDir, { recursive: true });
              }
-             
-             const { data: publicUrlData } = supabase.storage
-                 .from('media')
-                 .getPublicUrl(fileName);
-                 
-             mediaUrl = publicUrlData.publicUrl;
+             for (const file of req.files) {
+                 const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+                 const filepath = path.join(uploadsDir, filename);
+                 fs.writeFileSync(filepath, file.buffer);
+                 mediaUrls.push(`http://localhost:8000/uploads/${filename}`);
+             }
         }
+        const mediaUrl = mediaUrls[0] || null; // For legacy backwards compat
 
         const { data: newPost, error } = await supabase
             .from('posts')
-            .insert({ user_id: userId, content, media_url: mediaUrl, ai_status: 'pending' })
+            .insert({ user_id: userId, content, media_url: mediaUrl, media_urls: mediaUrls, ai_status: 'pending' })
             .select()
             .single();
             
@@ -57,90 +55,123 @@ export const createPost = async (req, res) => {
         // Respond instantly with pending status
         res.status(201).json({ success: true, post: newPost });
         
-        // Asynchronous AI Moderation Check (Non-blocking)
-        if (req.file) {
-             const formData = new FormData();
-             formData.append('file', req.file.buffer, {
-                 filename: req.file.originalname,
-                 contentType: req.file.mimetype
-             });
-             
-             try {
-                  const aiResponse = await axios.post('http://127.0.0.1:5000/api/v1/analyze', formData, {
-                      headers: { ...formData.getHeaders() }
-                  });
-                  const isFake = aiResponse.data.is_fake;
-                  const finalStatus = isFake ? 'flagged' : 'verified';
-                  
-                  await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
-                  
-                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
-                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
-                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
-                  
-             } catch (aiErr) {
-                  console.error('[AI Orchestrator Error]', aiErr.message);
-                  await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
-                  // Trigger web3 Relayer even if AI fails
-                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
-                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
-             }
-        } else {
-             // No media file, analyze text
-             try {
-                  const textAnalysisResponse = await axios.post('http://127.0.0.1:5000/api/v1/analyze/text', {
-                      text: content
-                  }, {
-                      headers: {
-                          'Content-Type': 'application/json'
-                      }
-                  });
-                  
-                  const result = textAnalysisResponse.data;
-                  console.log("Python AI Response:", JSON.stringify(result, null, 2));
+        // Asynchronous AI Moderation Check (Parallel Dispatch)
+        const hasText = content && content.trim().length > 0;
+        const hasMedia = mediaUrls.length > 0;
 
-                  const riskScore = result?.safety?.risk_score ?? 0;
-                  const aiConfidence = result?.ai_detection?.confidence_score ?? 0;
-                  const domainTopic = result?.domain?.primary_topic ?? 'General';
-                  const subTopics = result?.domain?.sub_topics ?? [];
-                  const flaggedCategories = result?.safety?.flagged_categories ?? [];
-                  const isAiGenerated = result?.ai_detection?.is_ai_generated ?? false;
-                  
-                  const analysisSummary = [result?.safety?.summary, result?.ai_detection?.reasoning]
-                            .filter(Boolean).join(" ");
-                  
-                  let finalStatus = 'verified';
-                  // Flag if AI generated, risk score >= 50, or any flagged categories
-                  if (isAiGenerated || (riskScore >= 50) || (flaggedCategories.length > 0)) {
-                      finalStatus = 'flagged';
-                  }
-                  
-                  await supabase.from('posts').update({ 
-                      ai_status: finalStatus,
-                      domain_topic: domainTopic,
-                      sub_topics: subTopics,
-                      analysis_summary: analysisSummary.trim(),
-                      ai_confidence: aiConfidence,
-                      risk_score: riskScore,
-                      flagged_categories: flaggedCategories
-                  }).eq('id', newPost.id);
-                  
-                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
-                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
-                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
-
-             } catch (aiErr) {
-                  console.error('[AI Orchestrator Error - Text]', aiErr?.response?.data || aiErr.message);
-                  await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
-                  // Trigger web3 Relayer even if AI fails
-                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
-                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
+        const promises = [];
+        
+        if (hasText) {
+             promises.push(
+                  axios.post('http://127.0.0.1:5000/api/v1/analyze/text', { text: content }, {
+                       headers: { 'Content-Type': 'application/json' },
+                       timeout: 30000
+                  })
+                  .then(res => ({ type: 'text', data: res.data }))
+                  .catch(err => {
+                       console.error('[AI Orchestrator Error - Text]', err?.response?.data || err.message);
+                       return { type: 'text', error: err };
+                  })
+             );
+        }
+        
+        if (hasMedia) {
+             for (let i = 0; i < mediaUrls.length; i++) {
+                  const url = mediaUrls[i];
+                  promises.push(
+                       moderateImage(newPost.id, url)
+                       .then(data => ({ type: 'image', data, url, index: i }))
+                       .catch(err => {
+                            console.error('[Moderation Error]', err.message);
+                            return { type: 'image', error: err, url, index: i };
+                       })
+                  );
              }
         }
+
+        const results = await Promise.allSettled(promises);
+        
+        let isLabeled = false;
+        let isBlocked = false;
+        let updatePayload = {};
+
+        results.forEach(result => {
+             if (result.status === 'fulfilled' && !result.value.error) {
+                  const { type, data } = result.value;
+                  if (type === 'text' && data) {
+                       const riskScore = data?.safety?.risk_score ?? 0;
+                       const aiConfidence = data?.ai_detection?.confidence_score ?? 0;
+                       const domainTopic = data?.domain?.primary_topic ?? 'General';
+                       const subTopics = data?.domain?.sub_topics ?? [];
+                       const flaggedCategories = data?.safety?.flagged_categories ?? [];
+                       const isAiGenerated = data?.ai_detection?.is_ai_generated ?? false;
+                       
+                       const analysisSummary = [data?.safety?.summary, data?.ai_detection?.reasoning].filter(Boolean).join(" ");
+
+                       if (isAiGenerated || riskScore >= 50 || flaggedCategories.length > 0) {
+                            isLabeled = true;
+                       }
+                       
+                       Object.assign(updatePayload, {
+                            domain_topic: domainTopic,
+                            sub_topics: subTopics,
+                            analysis_summary: analysisSummary.trim(),
+                            ai_confidence: aiConfidence,
+                            risk_score: riskScore,
+                            flagged_categories: flaggedCategories
+                       });
+                  } else if (type === 'image' && data) {
+                       if (data.status === 'blocked') {
+                            isBlocked = true;
+                       } else if (data.deepfake_confidence > 0.6 || data.disclosed_ai_content || (data.labels && data.labels.includes('ai_generated_image')) || data.status === 'flagged') {
+                            isLabeled = true;
+                       }
+
+                       const currentLabels = updatePayload.image_labels || [];
+                       const incomingLabels = data.labels || [];
+                       const newLabels = [...currentLabels, ...incomingLabels];
+
+                       const sensitiveTokens = ['18+', 'sensitive_content', 'too_revealing', 'explicit_content'];
+                       if (incomingLabels.some(l => sensitiveTokens.includes(l))) {
+                            newLabels.push(`sensitive_index_${result.value.index}`);
+                       }
+
+                       const uniqueLabels = [...new Set(newLabels)];
+                       const currentConf = updatePayload.deepfake_confidence || 0;
+
+                       Object.assign(updatePayload, {
+                            image_moderation_status: isBlocked ? 'blocked' : (isLabeled ? 'flagged' : 'verified'),
+                            image_labels: uniqueLabels,
+                            deepfake_confidence: Math.max(currentConf, data.deepfake_confidence || 0),
+                            deepfake_model_version: data.deepfake_model_version
+                       });
+                  }
+             } else {
+                  // Fallback for timeout or failure
+                  isLabeled = true;
+             }
+        });
+
+        // Compute final status and visibility
+        let finalStatus = 'verified';
+        let visibility = 'public';
+
+        if (isLabeled) {
+             finalStatus = 'flagged';
+             visibility = 'labeled';
+        } else if (isBlocked) {
+             visibility = 'labeled'; 
+        }
+
+        updatePayload.ai_status = finalStatus;
+        updatePayload.visibility = visibility;
+
+        await supabase.from('posts').update(updatePayload).eq('id', newPost.id);
+
+        // Trigger web3 Relayer
+        const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+        const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+        executeWeb3Relay(newPost, content, mediaUrls.join(','), targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
 
     } catch (err) {
         console.error(err);

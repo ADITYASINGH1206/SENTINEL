@@ -8,7 +8,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Core Post Routes
 router.get('/', getAllPosts);
-router.post('/', verifyToken, upload.single('media'), createPost);
+router.post('/', verifyToken, upload.array('media', 4), createPost);
 
 // Social Interaction Routes
 router.get('/:id/tx', getPostTx);
