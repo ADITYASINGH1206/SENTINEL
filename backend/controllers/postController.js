@@ -56,11 +56,18 @@ export const createPost = async (req, res) => {
                   
                   // Default to verified unless flagged/blocked by AI
                   let finalStatus = 'verified';
-                  if (aiResponse && (aiResponse.status === 'blocked' || aiResponse.deepfake_confidence > 0.6)) {
+                  if (aiResponse && (aiResponse.status === 'blocked' || aiResponse.deepfake_confidence > 0.6 || aiResponse.disclosed_ai_content || (aiResponse.labels && aiResponse.labels.includes('ai_generated_image')))) {
                       finalStatus = 'flagged';
                   }
                   
-                  await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
+                  await supabase.from('posts').update({ 
+                      ai_status: finalStatus,
+                      image_moderation_status: aiResponse?.status,
+                      image_labels: aiResponse?.labels || [],
+                      deepfake_confidence: aiResponse?.deepfake_confidence,
+                      deepfake_model_version: aiResponse?.deepfake_model_version,
+                      visibility: finalStatus === 'flagged' ? 'labeled' : 'public'
+                  }).eq('id', newPost.id);
                   
                   // Trigger web3 Relayer if wallet address exists, else fallback to a default address
                   const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();

@@ -202,12 +202,24 @@ export function PostCard({ post, isRepost }) {
              <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
           </Link>
           {post.media_url && (
-              <div className="mb-3 w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
-                 <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
-              </div>
+              <Link to={`/post/${post.id}`} className="block mb-3 w-full bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                 <img src={post.media_url} className="w-full h-auto max-h-[70vh] object-contain" alt="Post Media" />
+              </Link>
           )}
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
-            {(post.ai_status || 'pending').toUpperCase()}
+          <div className="flex gap-2 flex-wrap mb-2">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
+                {(post.ai_status || 'pending').toUpperCase()}
+              </div>
+              {post.image_labels && post.image_labels.includes('disclosed_ai_content') && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/20 text-purple-400 border-purple-500/50">
+                      C2PA METADATA: AI GENERATED
+                  </div>
+              )}
+              {post.image_labels && post.image_labels.includes('ai_generated_image') && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-red-500/20 text-red-400 border-red-500/50">
+                      DEEPFAKE DETECTED {post.deepfake_confidence ? `(${(post.deepfake_confidence * 100).toFixed(0)}%)` : ''}
+                  </div>
+              )}
           </div>
           
           <div className="flex justify-between items-center mt-3 text-gray-500 dark:text-gray-400 max-w-md w-full">

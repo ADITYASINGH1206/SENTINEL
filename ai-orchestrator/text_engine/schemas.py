@@ -118,11 +118,10 @@ class DomainClassification(BaseModel):
         description="The single most relevant domain/topic category."
     )
     sub_topics: List[str] = Field(
-        min_length=2,
-        max_length=3,
+        default_factory=list,
         description=(
-            "2-3 specific sub-topic tags within the primary domain "
-            "(e.g., ['cybersecurity', 'data privacy'])."
+            "Up to 3 specific sub-topic tags within the primary domain "
+            "(e.g., ['cybersecurity', 'data privacy']). Can be empty for short texts."
         ),
     )
 

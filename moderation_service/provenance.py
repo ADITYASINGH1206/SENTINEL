@@ -26,9 +26,13 @@ def check_provenance(image_bytes: bytes) -> bool:
             f.write(image_bytes)
 
         try:
-            reader = c2pa.Reader.from_file(temp_path)
-            print(f"[Provenance] C2PA manifest FOUND — {reader.json()[:200]}...")
-            return True
+            reader = c2pa.Reader.try_create(temp_path)
+            if reader is not None:
+                print(f"[Provenance] C2PA manifest FOUND — {reader.json()[:200]}...")
+                return True
+            else:
+                print("[Provenance] No C2PA manifest found.")
+                return False
         except Exception as exc:
             print(f"[Provenance] No C2PA manifest: {exc}")
             return False
@@ -36,5 +40,8 @@ def check_provenance(image_bytes: bytes) -> bool:
         print(f"[Provenance] Error during provenance check: {exc}")
         return False
     finally:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+        try:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except OSError:
+            pass
