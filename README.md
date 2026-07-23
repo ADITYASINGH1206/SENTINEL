@@ -66,9 +66,17 @@ npm run dev
 
 **AI Orchestrator:**
 ```bash
-python app.py
+python -m uvicorn app:app --port 5000 --reload
 # Expected output: Uvicorn running on http://0.0.0.0:5000
 ```
+
+### 4. How to Close the Project
+
+To safely shut down the servers, navigate to each of the three terminal windows you opened and press:
+
+**`Ctrl + C`** (Windows/Linux) or **`Cmd + C`** (Mac)
+
+If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all three terminals, the entire project will be closed.
 
 ---
 
