@@ -10,8 +10,26 @@ export const createPost = async (req, res) => {
         
         let mediaUrl = null;
         if (req.file) {
-             // Mock storing a file and getting a public URL for the hackathon
-             mediaUrl = 'https://via.placeholder.com/600x400.png?text=Uploaded+Media';
+             const fileExt = req.file.originalname.split('.').pop();
+             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+             
+             const { data: uploadData, error: uploadError } = await supabase.storage
+                 .from('media')
+                 .upload(fileName, req.file.buffer, {
+                     contentType: req.file.mimetype,
+                     upsert: false
+                 });
+                 
+             if (uploadError) {
+                 console.error("Supabase Upload Error:", uploadError);
+                 throw new Error("Failed to upload media");
+             }
+             
+             const { data: publicUrlData } = supabase.storage
+                 .from('media')
+                 .getPublicUrl(fileName);
+                 
+             mediaUrl = publicUrlData.publicUrl;
         }
 
         const { data: newPost, error } = await supabase
