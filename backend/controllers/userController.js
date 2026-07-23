@@ -1,10 +1,28 @@
 import { supabase } from '../supabaseClient.js';
 import { moderateAccountScore } from '../services/moderationService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { bio, wallet_address, avatar_url, cover_url } = req.body;
+        const { bio, wallet_address, cover_url } = req.body;
+        let { avatar_url } = req.body;
+        
+        if (req.file) {
+             const uploadsDir = path.join(__dirname, '..', 'uploads');
+             if (!fs.existsSync(uploadsDir)) {
+                 fs.mkdirSync(uploadsDir, { recursive: true });
+             }
+             const filename = `avatar-${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+             const filepath = path.join(uploadsDir, filename);
+             fs.writeFileSync(filepath, req.file.buffer);
+             avatar_url = `http://localhost:8000/uploads/${filename}`;
+        }
         
         const { data, error } = await supabase
             .from('users')

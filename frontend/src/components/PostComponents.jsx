@@ -45,7 +45,7 @@ export function CommentSection({ postId }) {
             {comments.length === 0 && <p className="text-sm text-gray-500">No comments yet.</p>}
             {comments.map(c => (
                 <div key={c.id} className="mb-3 flex gap-3">
-                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + c.users?.username} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
+                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
                     <div>
                         <span className="font-bold text-sm">{c.users?.display_name || c.users?.username}</span>
                         <p className="text-gray-300 text-sm">{c.content}</p>
@@ -182,7 +182,7 @@ export function PostCard({ post, isRepost }) {
       )}
       <div className="flex gap-4">
         <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
-            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
+            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + post.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + post.users?.username; }} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
         </Link>
         <div className="flex-grow min-w-0">
           <div className="flex items-center justify-between mb-1">
