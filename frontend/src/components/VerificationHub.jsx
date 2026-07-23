@@ -121,14 +121,25 @@ export default function VerificationHub() {
               const postHashHex = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
               
               if (postHashHex === calculatedHash || postHashHex === input) {
+                  // Try to fetch real on-chain transaction hash
+                  let realTxHash = null;
+                  try {
+                      const txRes = await apiFetch(`/api/v1/posts/${post.id}/tx`);
+                      if (txRes.success && txRes.txHash) {
+                          realTxHash = txRes.txHash;
+                      }
+                  } catch (err) {
+                      console.log("TxHash not yet available or failed to fetch");
+                  }
+
                   setManualResult({
                       success: true,
                       hash: postHashHex,
-                      txHash: '0xb5c8bd9430b6cc87a0e2fe110ece6bf527fa4f170a4bc8cd032f768fc5219838', // Valid Sepolia tx hash for demo purposes so it doesn't 404
+                      txHash: realTxHash, // Will be null if not yet mined
                       verdict: post.ai_status || 'verified',
                       author: post.users?.username || 'Unknown'
                   });
-                  toast.success("✅ Match found! Content is anchored on-chain.");
+                  toast.success("✅ Match found! Content verified.");
                   return;
               }
           }
@@ -353,15 +364,19 @@ export default function VerificationHub() {
                                <p><span className="text-gray-500">Verdict:</span> <span className="text-green-300 uppercase font-bold">{manualResult.verdict}</span></p>
                                <p><span className="text-gray-500">Author:</span> <span className="text-gray-300">{manualResult.author}</span></p>
                                <p><span className="text-gray-500">Hash:</span> <span className="text-gray-300 break-all">{manualResult.hash}</span></p>
-                               {manualResult.txHash && (
+                               {manualResult.txHash ? (
                                   <a 
-                                     href={`https://sepolia.blockscout.com/tx/${manualResult.txHash}`}
+                                     href={`https://sepolia.etherscan.io/tx/${manualResult.txHash}`}
                                      target="_blank"
                                      rel="noopener noreferrer"
                                      className="inline-flex mt-2 items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
                                   >
                                      <ExternalLink size={16} /> View Blockchain Transaction
                                   </a>
+                               ) : (
+                                  <div className="mt-2 text-yellow-500 flex items-center gap-2 text-sm font-bold">
+                                      <Loader2 size={16} className="animate-spin" /> Transaction processing on Sepolia...
+                                  </div>
                                )}
                             </div>
                          </>

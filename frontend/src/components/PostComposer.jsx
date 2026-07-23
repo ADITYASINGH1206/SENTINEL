@@ -2,12 +2,15 @@ import React, { useState, useRef } from 'react';
 import { Image, FileType2, AlignLeft, Smile, CalendarClock, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
+import { Web3Context } from '../context/Web3Context';
+import { useContext } from 'react';
 
 export default function PostComposer({ onPostSubmit }) {
   const [content, setContent] = useState('');
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
+  const { account } = useContext(Web3Context);
 
   const handleSubmit = async () => {
     if (!content.trim() && !file) return;
@@ -15,6 +18,7 @@ export default function PostComposer({ onPostSubmit }) {
     const formData = new FormData();
     formData.append("content", content);
     if (file) formData.append("media", file);
+    if (account) formData.append("walletAddress", account);
 
     try {
       const data = await apiFetch('/api/v1/posts', {
