@@ -1,11 +1,13 @@
 import { supabase } from '../supabaseClient.js';
 import axios from 'axios';
 import FormData from 'form-data';
-import { processWeb3Transaction } from '../services/web3Relayer.js';
 import { moderateImage } from '../services/moderationService.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { relayContentRegistration, relayUpdateVerification } from '../utils/web3Relayer.js';
+import { saveTxHash, getTxHash } from '../utils/txStore.js';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,24 +62,107 @@ export const createPost = async (req, res) => {
                   
                   await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
                   
-                  // Trigger web3 Relayer if wallet address exists
+                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
                   const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  if (userRecord?.wallet_address || walletAddress) {
-                      await processWeb3Transaction(userRecord?.wallet_address || walletAddress, finalStatus);
-                  }
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
                   
              } catch (aiErr) {
                   console.error('[Moderation Error]', aiErr.message);
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
+                  // Trigger web3 Relayer even if AI fails
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
              }
         } else {
-             // No media file, auto verify
-             await supabase.from('posts').update({ ai_status: 'verified' }).eq('id', newPost.id);
+             // No media file, analyze text
+             try {
+                  const textAnalysisResponse = await axios.post('http://127.0.0.1:5000/api/v1/analyze/text', {
+                      text: content
+                  }, {
+                      headers: {
+                          'Content-Type': 'application/json'
+                      }
+                  });
+                  
+                  const { ai_detection, safety, domain } = textAnalysisResponse.data;
+                  
+                  let finalStatus = 'verified';
+                  // Flag if AI generated or if risk score implies low trust
+                  const trustThreshold = parseInt(process.env.TRUST_SCORE_THRESHOLD || '80', 10);
+                  const trustScore = 100 - (safety?.risk_score || 0);
+                  
+                  if (ai_detection?.is_ai_generated || trustScore < trustThreshold) {
+                      finalStatus = 'flagged';
+                  }
+                  
+                  // Construct Analysis Summary
+                  let analysis_summary = '';
+                  if (safety?.summary) analysis_summary += safety.summary + ' ';
+                  if (ai_detection?.reasoning) analysis_summary += ai_detection.reasoning;
+
+                  await supabase.from('posts').update({ 
+                      ai_status: finalStatus,
+                      domain_topic: domain?.primary_topic,
+                      sub_topics: domain?.sub_topics || [],
+                      analysis_summary: analysis_summary.trim(),
+                      ai_confidence: ai_detection?.confidence_score,
+                      risk_score: safety?.risk_score
+                  }).eq('id', newPost.id);
+                  
+                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
+
+             } catch (aiErr) {
+                  console.error('[AI Orchestrator Error - Text]', aiErr?.response?.data || aiErr.message);
+                  await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
+                  // Trigger web3 Relayer even if AI fails
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
+             }
         }
 
     } catch (err) {
         console.error(err);
         if (!res.headersSent) res.status(500).json({ error: err.message });
+    }
+};
+
+const executeWeb3Relay = async (newPost, content, mediaUrl, walletAddress, finalStatus) => {
+    try {
+        const textToHash = mediaUrl || content || newPost.id.toString();
+        const contentHash = '0x' + crypto.createHash('sha256').update(textToHash).digest('hex');
+        
+        console.log(`[Web3] Starting on-chain relay for post ${newPost.id}, hash: ${contentHash}`);
+        
+        // 1. Register Content
+        const registerRes = await relayContentRegistration(contentHash, mediaUrl || 'text_post', walletAddress);
+        if (registerRes.success && registerRes.txHash) {
+            console.log(`[Web3] Registration successful. Tx: ${registerRes.txHash}`);
+            await saveTxHash(newPost.id, registerRes.txHash);
+        }
+        
+        // 2. Update Verification Status
+        await relayUpdateVerification(contentHash, finalStatus);
+        console.log(`[Web3] Status updated to ${finalStatus} on-chain.`);
+    } catch (err) {
+        console.error(`[Web3] Relay execution failed for post ${newPost.id}:`, err);
+    }
+};
+
+export const getPostTx = async (req, res) => {
+    try {
+        const txHash = await getTxHash(req.params.id);
+        if (txHash) {
+            return res.json({ success: true, txHash });
+        }
+        res.status(404).json({ success: false, message: "Transaction hash not found or pending" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
 

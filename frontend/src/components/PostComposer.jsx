@@ -3,6 +3,8 @@ import { Image, FileType2, AlignLeft, Smile, CalendarClock, MapPin, ShieldAlert,
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import * as nsfwjs from 'nsfwjs';
+import { Web3Context } from '../context/Web3Context';
+import { useContext } from 'react';
 
 // ---------------------------------------------------------------------------
 // nsfwjs client-side NSFW pre-check
@@ -76,6 +78,7 @@ export default function PostComposer({ onPostSubmit }) {
   const [checkingNsfw, setCheckingNsfw] = useState(false);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
+  const { account } = useContext(Web3Context);
 
   const handleFileChange = useCallback(async (e) => {
     const selected = e.target.files[0];
@@ -110,6 +113,7 @@ export default function PostComposer({ onPostSubmit }) {
     const formData = new FormData();
     formData.append("content", content);
     if (file) formData.append("media", file);
+    if (account) formData.append("walletAddress", account);
 
     try {
       const data = await apiFetch('/api/v1/posts', {
