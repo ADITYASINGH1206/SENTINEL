@@ -45,9 +45,6 @@ npm install
 ```bash
 cd ai-orchestrator
 python -m venv venv
-# If using Command Prompt / PowerShell:
-venv\Scripts\activate
-# If using Git Bash / Mac / Linux:
 source venv/Scripts/activate
 
 pip install -r requirements.txt
@@ -58,9 +55,6 @@ pip install -r requirements.txt
 ```bash
 cd moderation_service
 python -m venv venv
-# If using Command Prompt / PowerShell:
-venv\Scripts\activate
-# If using Git Bash / Mac / Linux:
 source venv/Scripts/activate
 
 pip install -r requirements.txt
@@ -87,9 +81,6 @@ npm run dev
 **Moderation Service:**
 ```bash
 cd moderation_service
-# If using Command Prompt / PowerShell:
-venv\Scripts\activate
-# If using Git Bash / Mac / Linux:
 source venv/Scripts/activate
 
 python app.py
@@ -99,9 +90,6 @@ python app.py
 **AI Orchestrator:**
 ```bash
 cd ai-orchestrator
-# If using Command Prompt / PowerShell:
-venv\Scripts\activate
-# If using Git Bash / Mac / Linux:
 source venv/Scripts/activate
 
 python app.py
