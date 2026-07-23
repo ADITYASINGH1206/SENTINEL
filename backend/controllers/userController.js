@@ -14,14 +14,17 @@ export const updateProfile = async (req, res) => {
         let { avatar_url } = req.body;
         
         if (req.file) {
-             const uploadsDir = path.join(__dirname, '..', 'uploads');
-             if (!fs.existsSync(uploadsDir)) {
-                 fs.mkdirSync(uploadsDir, { recursive: true });
-             }
              const filename = `avatar-${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
-             const filepath = path.join(uploadsDir, filename);
-             fs.writeFileSync(filepath, req.file.buffer);
-             avatar_url = `http://localhost:8000/uploads/${filename}`;
+             const { data, error } = await supabase.storage.from('media').upload(`public/${filename}`, req.file.buffer, {
+                 contentType: req.file.mimetype,
+                 upsert: false
+             });
+             if (error) {
+                 console.error("Supabase storage upload error:", error);
+                 throw new Error("Failed to upload avatar to Supabase storage");
+             }
+             const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(`public/${filename}`);
+             avatar_url = publicUrlData.publicUrl;
         }
         
         const { data, error } = await supabase
