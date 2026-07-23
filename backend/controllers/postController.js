@@ -19,15 +19,18 @@ export const createPost = async (req, res) => {
         
         let mediaUrls = [];
         if (req.files && req.files.length > 0) {
-             const uploadsDir = path.join(__dirname, '..', 'uploads');
-             if (!fs.existsSync(uploadsDir)) {
-                 fs.mkdirSync(uploadsDir, { recursive: true });
-             }
              for (const file of req.files) {
                  const filename = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
-                 const filepath = path.join(uploadsDir, filename);
-                 fs.writeFileSync(filepath, file.buffer);
-                 mediaUrls.push(`http://localhost:8000/uploads/${filename}`);
+                 const { data, error } = await supabase.storage.from('media').upload(`public/${filename}`, file.buffer, {
+                     contentType: file.mimetype,
+                     upsert: false
+                 });
+                 if (error) {
+                     console.error("Supabase storage upload error:", error);
+                     throw new Error("Failed to upload media to Supabase storage");
+                 }
+                 const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(`public/${filename}`);
+                 mediaUrls.push(publicUrlData.publicUrl);
              }
         }
         const mediaUrl = mediaUrls[0] || null; // For legacy backwards compat

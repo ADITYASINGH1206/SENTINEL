@@ -189,7 +189,7 @@ def analyze(image_bytes: bytes) -> dict:
     labels: list[str] = []
     if fake_conf > FAKE_THRESHOLD:
         labels.append("ai_generated_image")
-        print("[Deepfake] → label: ai_generated_image")
+        print("[Deepfake] -> label: ai_generated_image")
 
     return {
         "deepfake_confidence": round(fake_conf, 4),
