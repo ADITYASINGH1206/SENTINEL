@@ -74,9 +74,9 @@ python app.py
 
 ## 🤖 Text Safety Engine (AI Orchestrator)
 
-The platform features a **3-tier LangChain Fallback Hierarchy** (Gemini 2.0 Flash → Groq Llama 3.1 8B → OpenAI GPT-4o-mini) that evaluates text posts in a single pass to provide:
+The platform features a **3-tier LangChain Fallback Hierarchy** (Gemini 2.0 Flash → Groq Llama 3.3 70B → OpenAI GPT-4o-mini) that evaluates text posts in a single pass to provide:
 1. **AI Generation Detection:** Identifies stylometric markers indicating LLM authorship.
-2. **Harm & Safety Assessment:** Flags hate speech, misinformation, and other high-risk categories.
+2. **Harm & Safety Assessment:** Flags hate speech, misinformation, and other high-risk content using a strictly enforced **10-Tag Harm Taxonomy** (e.g., Harassment, Self-Harm, Scams) and a Zero-Tolerance Rubric.
 3. **Domain Classification:** Categorizes the text by topic (e.g., Politics, Tech).
 
 The backend automatically routes text posts to this engine and renders the resulting scores and tags seamlessly in the frontend UI.
