@@ -46,7 +46,7 @@ def _build_chain():
 
     # 2. First Fallback: Groq
     fallback_groq = ChatGroq(
-        model="llama-3.1-8b-instant",
+        model="llama-3.3-70b-versatile",
         api_key=groq_key,
         temperature=0.0,
     ).with_structured_output(SentinelTextAnalysis)

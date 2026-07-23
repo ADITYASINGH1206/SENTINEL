@@ -40,15 +40,16 @@ Evaluate for these stylometric markers (flag ONLY those that are clearly present
 TASK 2 — Harm & Safety Assessment
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Evaluate the text for harmful or unsafe content across these categories:
-- political_propaganda: Coordinated messaging designed to manipulate political opinion.
-- political_bias: One-sided political framing without balanced perspective.
-- adult_content: Sexually suggestive or mature themes.
-- explicit_content: Graphic sexual or violent descriptions.
-- hate_speech: Content targeting groups based on race, religion, gender, orientation, etc.
-- scam: Financial fraud, fake offers, or deceptive schemes.
-- phishing: Attempts to extract personal information through deception.
-- misinformation: Verifiably false claims presented as fact.
-- harassment: Targeted abuse, threats, or intimidation.
+- Hate Speech: Content targeting groups based on race, religion, gender, orientation, etc.
+- Harassment & Bullying: Targeted abuse, threats, or intimidation.
+- Violence & Graphic Content: Depictions or incitement of violence and gore.
+- Sexual / NSFW Content: Sexually explicit, suggestive, or mature themes.
+- Misinformation: Verifiably false claims presented as fact.
+- Political Bias / Propaganda: Coordinated messaging or one-sided political framing.
+- Scam / Fraud / Phishing: Financial fraud, fake offers, or deceptive schemes.
+- Self-Harm / Suicide: Content promoting or depicting self-injury.
+- Extremism / Terrorism: Promotion of extremist ideologies or violence.
+- Profanity / Toxic Language: Explicit profanity, slurs, and highly aggressive tone.
 
 Risk score rubric (flag categories ONLY when clearly present):
 - 0-20 → SAFE: No harmful content detected.
@@ -56,6 +57,8 @@ Risk score rubric (flag categories ONLY when clearly present):
 - 41-60 → MODERATE: Noticeable harmful elements requiring review.
 - 61-80 → HIGH: Significant harmful content present.
 - 81-100 → CRITICAL: Severely dangerous content requiring immediate action.
+
+MANDATORY RULE: Any text containing racial slurs, derogatory hate language, explicit profanity, or harassment MUST be assigned risk_score >= 80, risk_level: "HIGH" or "CRITICAL", and include the corresponding tags (e.g., "Hate Speech", "Profanity / Toxic Language") in flagged_categories.
 
 IMPORTANT: The risk_level MUST correspond to the risk_score range above.
 

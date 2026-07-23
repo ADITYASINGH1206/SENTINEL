@@ -206,8 +206,10 @@ export function PostCard({ post, isRepost }) {
                  <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
               </div>
           )}
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
-            {(post.ai_status || 'pending').toUpperCase()}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
+                {(post.ai_status || 'pending').toUpperCase()}
+              </div>
           </div>
           
           <div className="flex justify-between items-center mt-3 text-gray-500 dark:text-gray-400 max-w-md w-full">

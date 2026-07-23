@@ -61,15 +61,16 @@ class RiskLevel(str, Enum):
 
 class HarmCategory(str, Enum):
     """Categories of harmful content to evaluate."""
-    POLITICAL_PROPAGANDA = "political_propaganda"
-    POLITICAL_BIAS = "political_bias"
-    ADULT_CONTENT = "adult_content"
-    EXPLICIT_CONTENT = "explicit_content"
-    HATE_SPEECH = "hate_speech"
-    SCAM = "scam"
-    PHISHING = "phishing"
-    MISINFORMATION = "misinformation"
-    HARASSMENT = "harassment"
+    HATE_SPEECH = "Hate Speech"
+    HARASSMENT = "Harassment & Bullying"
+    VIOLENCE = "Violence & Graphic Content"
+    SEXUAL_NSFW = "Sexual / NSFW Content"
+    MISINFORMATION = "Misinformation"
+    POLITICAL_BIAS = "Political Bias / Propaganda"
+    SCAM_FRAUD = "Scam / Fraud / Phishing"
+    SELF_HARM = "Self-Harm / Suicide"
+    EXTREMISM = "Extremism / Terrorism"
+    PROFANITY_TOXIC = "Profanity / Toxic Language"
 
 
 class HarmSafetyAssessment(BaseModel):

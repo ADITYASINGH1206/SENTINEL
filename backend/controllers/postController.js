@@ -98,29 +98,33 @@ export const createPost = async (req, res) => {
                       }
                   });
                   
-                  const { ai_detection, safety, domain } = textAnalysisResponse.data;
+                  const result = textAnalysisResponse.data;
+                  console.log("Python AI Response:", JSON.stringify(result, null, 2));
+
+                  const riskScore = result?.safety?.risk_score ?? 0;
+                  const aiConfidence = result?.ai_detection?.confidence_score ?? 0;
+                  const domainTopic = result?.domain?.primary_topic ?? 'General';
+                  const subTopics = result?.domain?.sub_topics ?? [];
+                  const flaggedCategories = result?.safety?.flagged_categories ?? [];
+                  const isAiGenerated = result?.ai_detection?.is_ai_generated ?? false;
+                  
+                  const analysisSummary = [result?.safety?.summary, result?.ai_detection?.reasoning]
+                            .filter(Boolean).join(" ");
                   
                   let finalStatus = 'verified';
-                  // Flag if AI generated or if risk score implies low trust
-                  const trustThreshold = parseInt(process.env.TRUST_SCORE_THRESHOLD || '80', 10);
-                  const trustScore = 100 - (safety?.risk_score || 0);
-                  
-                  if (ai_detection?.is_ai_generated || trustScore < trustThreshold) {
+                  // Flag if AI generated, risk score >= 50, or any flagged categories
+                  if (isAiGenerated || (riskScore >= 50) || (flaggedCategories.length > 0)) {
                       finalStatus = 'flagged';
                   }
                   
-                  // Construct Analysis Summary
-                  let analysis_summary = '';
-                  if (safety?.summary) analysis_summary += safety.summary + ' ';
-                  if (ai_detection?.reasoning) analysis_summary += ai_detection.reasoning;
-
                   await supabase.from('posts').update({ 
                       ai_status: finalStatus,
-                      domain_topic: domain?.primary_topic,
-                      sub_topics: domain?.sub_topics || [],
-                      analysis_summary: analysis_summary.trim(),
-                      ai_confidence: ai_detection?.confidence_score,
-                      risk_score: safety?.risk_score
+                      domain_topic: domainTopic,
+                      sub_topics: subTopics,
+                      analysis_summary: analysisSummary.trim(),
+                      ai_confidence: aiConfidence,
+                      risk_score: riskScore,
+                      flagged_categories: flaggedCategories
                   }).eq('id', newPost.id);
                   
                   // Trigger web3 Relayer if wallet address exists, else fallback to a default address
