@@ -10,6 +10,7 @@ import trendingRoutes from './routes/trendingRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import web3Routes from './routes/web3Routes.js';
 import relayerRoutes from './routes/relayer.js';
+import reportRoutes from './routes/reportRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -27,6 +28,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/trending', trendingRoutes);
 app.use('/api/v1/news', newsRoutes);
 app.use('/api/v1/web3', web3Routes);
+app.use('/api/v1/reports', reportRoutes);
 app.use('/api', relayerRoutes);
 
 const PORT = process.env.PORT || 8000;

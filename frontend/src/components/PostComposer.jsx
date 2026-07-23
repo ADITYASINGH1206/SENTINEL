@@ -1,10 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Image, FileType2, AlignLeft, Smile, CalendarClock, MapPin, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
+import { Image, FileType2, AlignLeft, Smile, CalendarClock, MapPin, ShieldAlert, ShieldCheck, Loader2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import * as nsfwjs from 'nsfwjs';
 import { Web3Context } from '../context/Web3Context';
 import { useContext } from 'react';
+import { toast } from 'react-toastify';
 
 // ---------------------------------------------------------------------------
 // nsfwjs client-side NSFW pre-check
@@ -73,46 +74,61 @@ async function checkNsfw(file) {
 // ---------------------------------------------------------------------------
 export default function PostComposer({ onPostSubmit }) {
   const [content, setContent] = useState('');
-  const [file, setFile] = useState(null);
-  const [nsfwStatus, setNsfwStatus] = useState(null); // null | { safe, warning, blocked, reason }
+  const [files, setFiles] = useState([]);
+  const [nsfwStatuses, setNsfwStatuses] = useState([]);
   const [checkingNsfw, setCheckingNsfw] = useState(false);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
   const { account } = useContext(Web3Context);
 
   const handleFileChange = useCallback(async (e) => {
-    const selected = e.target.files[0];
-    if (!selected) return;
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
 
-    // Only check images
-    if (selected.type.startsWith('image/')) {
-      setCheckingNsfw(true);
-      setNsfwStatus(null);
-      setFile(selected);
-
-      const result = await checkNsfw(selected);
-      setNsfwStatus(result);
-      setCheckingNsfw(false);
-
-      if (result.blocked) {
-        // Clear the file — don't allow upload
-        setFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    } else {
-      // Non-image files skip NSFW check
-      setFile(selected);
-      setNsfwStatus(null);
+    if (files.length + selectedFiles.length > 4) {
+      toast.error("You can only upload up to 4 images per post.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
-  }, []);
+
+    setCheckingNsfw(true);
+    
+    const newFiles = [...files];
+    const newStatuses = [...nsfwStatuses];
+
+    for (const selected of selectedFiles) {
+      if (selected.type.startsWith('image/')) {
+        const result = await checkNsfw(selected);
+        if (!result.blocked) {
+          newFiles.push(selected);
+          newStatuses.push(result);
+        } else {
+          toast.error(`Image ${selected.name} blocked: ${result.reason}`);
+        }
+      } else {
+        newFiles.push(selected);
+        newStatuses.push(null);
+      }
+    }
+
+    setFiles(newFiles);
+    setNsfwStatuses(newStatuses);
+    setCheckingNsfw(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [files, nsfwStatuses]);
+
+  const handleRemoveFile = (indexToRemove) => {
+    setFiles(files.filter((_, i) => i !== indexToRemove));
+    setNsfwStatuses(nsfwStatuses.filter((_, i) => i !== indexToRemove));
+  };
 
   const handleSubmit = async () => {
-    if (!content.trim() && !file) return;
-    if (nsfwStatus?.blocked) return; // Extra guard
+    if (!content.trim() && files.length === 0) return;
+    if (nsfwStatuses.some(s => s?.blocked)) return;
     
     const formData = new FormData();
     formData.append("content", content);
-    if (file) formData.append("media", file);
+    files.forEach(f => formData.append("media", f));
     if (account) formData.append("walletAddress", account);
 
     try {
@@ -123,7 +139,7 @@ export default function PostComposer({ onPostSubmit }) {
       if (data.success && onPostSubmit) onPostSubmit();
     } catch(err) { console.error("Failed to create post", err); }
     
-    setContent(''); setFile(null); setNsfwStatus(null);
+    setContent(''); setFiles([]); setNsfwStatuses([]);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -133,7 +149,7 @@ export default function PostComposer({ onPostSubmit }) {
     setContent(e.target.value);
   };
 
-  const isSubmitDisabled = (!content.trim() && !file) || nsfwStatus?.blocked || checkingNsfw;
+  const isSubmitDisabled = (!content.trim() && files.length === 0) || nsfwStatuses.some(s => s?.blocked) || checkingNsfw;
 
   return (
     <div className="border-b border-gray-200 dark:border-zinc-800 p-4 pb-2">
@@ -147,44 +163,44 @@ export default function PostComposer({ onPostSubmit }) {
              onChange={handleInput} 
           />
 
-          {/* File attachment + NSFW status */}
-          {file && (
-            <div className="mt-2 flex items-center gap-2">
-              <p className="text-sm text-blue-500 font-bold">Attached: {file.name}</p>
-              {checkingNsfw && (
-                <span className="flex items-center gap-1 text-xs text-yellow-500">
-                  <Loader2 size={14} className="animate-spin" /> Checking...
-                </span>
-              )}
+          {/* File attachments grid */}
+          {files.length > 0 && (
+            <div className={`mt-2 grid gap-2 ${files.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {files.map((f, i) => {
+                const url = URL.createObjectURL(f);
+                return (
+                  <div key={i} className="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <img src={url} alt="upload preview" className="w-full h-auto object-cover max-h-48" />
+                    <button 
+                      onClick={() => handleRemoveFile(i)}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100"
+                    >
+                      <X size={16} />
+                    </button>
+                    {nsfwStatuses[i]?.warning && (
+                      <div className="absolute bottom-0 w-full bg-yellow-500/90 text-black text-xs font-bold p-1 text-center flex items-center justify-center gap-1">
+                        <ShieldAlert size={12} /> 18+ Warning
+                      </div>
+                    )}
+                    {nsfwStatuses[i]?.safe && (
+                      <div className="absolute bottom-0 w-full bg-green-500/90 text-white text-xs font-bold p-1 text-center flex items-center justify-center gap-1">
+                        <ShieldCheck size={12} /> Safe
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
-
-          {/* NSFW warning banner */}
-          {nsfwStatus?.warning && (
-            <div className="mt-2 p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 flex items-center gap-2">
-              <ShieldAlert size={16} className="text-yellow-500 flex-shrink-0" />
-              <p className="text-xs text-yellow-700 dark:text-yellow-300">{nsfwStatus.reason}. It will be labeled as 18+ sensitive content.</p>
-            </div>
-          )}
-
-          {/* NSFW blocked banner */}
-          {nsfwStatus?.blocked && (
-            <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2">
-              <ShieldAlert size={16} className="text-red-500 flex-shrink-0" />
-              <p className="text-xs text-red-700 dark:text-red-300">{nsfwStatus.reason}. This image cannot be uploaded.</p>
-            </div>
-          )}
-
-          {/* Safe badge (only show after check completes with no issues) */}
-          {nsfwStatus?.safe && file && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-green-500">
-              <ShieldCheck size={14} /> Image passed safety check
+          {checkingNsfw && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-yellow-500">
+              <Loader2 size={16} className="animate-spin" /> Checking safety...
             </div>
           )}
           
           <div className="border-t border-gray-200 dark:border-zinc-800 pt-3 flex justify-between items-center mt-3">
             <div className="flex gap-1 text-blue-500">
-              <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileChange} accept="image/*,video/*" />
+              <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileChange} accept="image/*,video/*" multiple />
               <button onClick={() => fileInputRef.current?.click()} className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="Media"><Image size={20} /></button>
               <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="GIF"><FileType2 size={20} /></button>
               <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Poll"><AlignLeft size={20} /></button>
