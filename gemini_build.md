@@ -250,8 +250,8 @@ ahead for Phase 2.
 |------|--------|-------|
 | `app.py` — FastAPI app | ✅ | Fully operational text analysis endpoint (`POST /api/v1/analyze/text`) running on port 5000. |
 | `config.py` — Settings | ✅ | Configured with Web3 parameters and Cloud API keys (Google, Groq, OpenAI). |
-| `text_engine/` module | ✅ | Uses LangChain for robust fallback processing. Tested via `test_text_analyzer.py`. |
-| Integration with Node backend | ✅ | `postController.js` calls the orchestrator directly and dynamically renders domain tags and metrics on the frontend UI. |
+| `text_engine/` module | ✅ | Uses LangChain for robust fallback processing (Gemini 2.0 Flash -> Groq Llama-3.3-70b-versatile -> OpenAI GPT-4o-mini). Evaluates content against a strict Zero-Tolerance Moderation Rubric and 10-tag Harm Taxonomy. Tested via `test_text_analyzer.py`. |
+| Integration with Node backend | ✅ | `postController.js` calls the orchestrator directly and dynamically renders domain tags and metrics on the frontend UI, handling fallback to prevent N/A data drops on text posts. |
 
 **AI Orchestrator Summary: 100% complete — hosting the Text Safety Engine and seamlessly wired to the backend.**
 
