@@ -1,7 +1,9 @@
 import { supabase } from '../supabaseClient.js';
 import axios from 'axios';
 import FormData from 'form-data';
-import { processWeb3Transaction } from '../services/web3Relayer.js';
+import { relayContentRegistration, relayUpdateVerification } from '../utils/web3Relayer.js';
+import { saveTxHash, getTxHash } from '../utils/txStore.js';
+import crypto from 'crypto';
 
 export const createPost = async (req, res) => {
     try {
@@ -10,8 +12,26 @@ export const createPost = async (req, res) => {
         
         let mediaUrl = null;
         if (req.file) {
-             // Mock storing a file and getting a public URL for the hackathon
-             mediaUrl = 'https://via.placeholder.com/600x400.png?text=Uploaded+Media';
+             const fileExt = req.file.originalname.split('.').pop();
+             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+             
+             const { data: uploadData, error: uploadError } = await supabase.storage
+                 .from('media')
+                 .upload(fileName, req.file.buffer, {
+                     contentType: req.file.mimetype,
+                     upsert: false
+                 });
+                 
+             if (uploadError) {
+                 console.error("Supabase Upload Error:", uploadError);
+                 throw new Error("Failed to upload media");
+             }
+             
+             const { data: publicUrlData } = supabase.storage
+                 .from('media')
+                 .getPublicUrl(fileName);
+                 
+             mediaUrl = publicUrlData.publicUrl;
         }
 
         const { data: newPost, error } = await supabase
@@ -54,15 +74,18 @@ export const createPost = async (req, res) => {
                   
                   await supabase.from('posts').update({ ai_status: finalStatus }).eq('id', newPost.id);
                   
-                  // Trigger web3 Relayer if wallet address exists
+                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
                   const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  if (userRecord?.wallet_address || walletAddress) {
-                      await processWeb3Transaction(userRecord?.wallet_address || walletAddress, finalStatus);
-                  }
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
                   
              } catch (aiErr) {
                   console.error('[AI Orchestrator Error]', aiErr.message);
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
+                  // Trigger web3 Relayer even if AI fails
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
              }
         } else {
              // No media file, analyze text
@@ -100,21 +123,58 @@ export const createPost = async (req, res) => {
                       risk_score: safety?.risk_score
                   }).eq('id', newPost.id);
                   
-                  // Trigger web3 Relayer if wallet address exists
+                  // Trigger web3 Relayer if wallet address exists, else fallback to a default address
                   const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-                  if (userRecord?.wallet_address || walletAddress) {
-                      await processWeb3Transaction(userRecord?.wallet_address || walletAddress, finalStatus);
-                  }
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, finalStatus).catch(err => console.error("Web3 Relay failed:", err));
 
              } catch (aiErr) {
                   console.error('[AI Orchestrator Error - Text]', aiErr?.response?.data || aiErr.message);
                   await supabase.from('posts').update({ ai_status: 'flagged' }).eq('id', newPost.id);
+                  // Trigger web3 Relayer even if AI fails
+                  const { data: userRecord } = await supabase.from('users').select('wallet_address').eq('id', userId).single();
+                  const targetAddress = userRecord?.wallet_address || walletAddress || '0x0000000000000000000000000000000000000000';
+                  executeWeb3Relay(newPost, content, mediaUrl, targetAddress, 'flagged').catch(err => console.error("Web3 Relay failed:", err));
              }
         }
 
     } catch (err) {
         console.error(err);
         if (!res.headersSent) res.status(500).json({ error: err.message });
+    }
+};
+
+const executeWeb3Relay = async (newPost, content, mediaUrl, walletAddress, finalStatus) => {
+    try {
+        const textToHash = mediaUrl || content || newPost.id.toString();
+        const contentHash = '0x' + crypto.createHash('sha256').update(textToHash).digest('hex');
+        
+        console.log(`[Web3] Starting on-chain relay for post ${newPost.id}, hash: ${contentHash}`);
+        
+        // 1. Register Content
+        const registerRes = await relayContentRegistration(contentHash, mediaUrl || 'text_post', walletAddress);
+        if (registerRes.success && registerRes.txHash) {
+            console.log(`[Web3] Registration successful. Tx: ${registerRes.txHash}`);
+            await saveTxHash(newPost.id, registerRes.txHash);
+        }
+        
+        // 2. Update Verification Status
+        await relayUpdateVerification(contentHash, finalStatus);
+        console.log(`[Web3] Status updated to ${finalStatus} on-chain.`);
+    } catch (err) {
+        console.error(`[Web3] Relay execution failed for post ${newPost.id}:`, err);
+    }
+};
+
+export const getPostTx = async (req, res) => {
+    try {
+        const txHash = await getTxHash(req.params.id);
+        if (txHash) {
+            return res.json({ success: true, txHash });
+        }
+        res.status(404).json({ success: false, message: "Transaction hash not found or pending" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
 

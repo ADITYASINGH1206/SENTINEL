@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Bell, Mail, Bookmark, MonitorPlay, Zap, User, CircleEllipsis, Feather, Wallet, Coins } from 'lucide-react';
+import { Home, Search, Bell, Mail, Bookmark, MonitorPlay, Zap, User, CircleEllipsis, Feather, Wallet, Coins, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Web3Context } from '../context/Web3Context';
 import ThemeToggler from './ThemeToggler';
@@ -17,7 +17,7 @@ export default function Sidebar() {
     { name: 'Notifications', path: '/notifications', icon: <Bell size={26} /> },
     { name: 'Messages', path: '/chat', icon: <Mail size={26} /> },
     { name: 'Bookmarks', path: '/bookmarks', icon: <Bookmark size={26} /> },
-    { name: 'Premium', path: '/premium', icon: <Zap size={26} /> },
+    { name: 'Verify', path: '/dashboard', icon: <ShieldCheck size={26} /> },
     { name: 'Profile', path: '/profile', icon: <User size={26} /> },
     { name: 'More', path: '#', icon: <CircleEllipsis size={26} /> }
   ];
@@ -88,17 +88,7 @@ export default function Sidebar() {
                    )}
                </div>
            )}
-           
-           {/* Post Button */}
-           <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 px-8 rounded-full transition shadow-md">
-             Post
-           </button>
         </div>
-
-        {/* Mobile Post Button */}
-        <button className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold p-3 rounded-full w-12 h-12 flex items-center justify-center transition shadow-md sm:hidden">
-          <Feather size={24} />
-        </button>
       </div>
 
       {/* User Profile Card */}

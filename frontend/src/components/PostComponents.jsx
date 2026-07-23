@@ -6,7 +6,8 @@ import { apiFetch } from '../services/api';
 import VerifiedBadge from './VerifiedBadge';
 import useIntersectionObserver from '../hooks/useIntersectionObserver';
 import { Web3Context } from '../context/Web3Context';
-import { ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Copy } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 export function CommentSection({ postId }) {
     const [comments, setComments] = useState([]);
@@ -78,6 +79,7 @@ export function PostCard({ post, isRepost }) {
   const [showComments, setShowComments] = useState(false);
   const [hasTracked, setHasTracked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const [targetRef, isIntersecting] = useIntersectionObserver({ threshold: 0.5 });
 
@@ -130,6 +132,22 @@ export function PostCard({ post, isRepost }) {
       flagged: 'bg-red-500/20 text-red-400 border-red-500/50'
   };
 
+  const handleCopyHash = async () => {
+      try {
+          const textToHash = post.media_url || post.content || post.id.toString();
+          const msgUint8 = new TextEncoder().encode(textToHash);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashHex = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          
+          await navigator.clipboard.writeText(hashHex);
+          toast.success("Post Hash copied to clipboard!");
+          setShowMenu(false);
+      } catch (err) {
+          toast.error("Failed to copy hash");
+      }
+  };
+
   return (
     <div ref={targetRef} className="border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
       {isRepost && (
@@ -164,9 +182,21 @@ export function PostCard({ post, isRepost }) {
                     </button>
                 )}
               </div>
-              <button className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition p-2 rounded-full hover:bg-blue-500/10">
-                 <CircleEllipsis size={18} />
-              </button>
+              <div className="relative">
+                  <button onClick={() => setShowMenu(!showMenu)} className="text-gray-500 dark:text-gray-400 hover:text-blue-500 transition p-2 rounded-full hover:bg-blue-500/10">
+                     <CircleEllipsis size={18} />
+                  </button>
+                  {showMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700">
+                          <button 
+                             onClick={handleCopyHash} 
+                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                          >
+                             <Copy size={16} /> Copy On-Chain Hash
+                          </button>
+                      </div>
+                  )}
+              </div>
           </div>
           <Link to={`/post/${post.id}`}>
              <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
