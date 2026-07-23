@@ -11,3 +11,8 @@ typechain-types/
 dist/
 build/
 secret.json
+
+# Local Testing / ML Models
+models/
+images/
+backend/uploads/
