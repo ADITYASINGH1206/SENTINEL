@@ -80,6 +80,7 @@ export default function PostComposer({ onPostSubmit }) {
   const [files, setFiles] = useState([]);
   const [nsfwStatuses, setNsfwStatuses] = useState([]);
   const [checkingNsfw, setCheckingNsfw] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showLocationInput, setShowLocationInput] = useState(false);
   const [location, setLocation] = useState('');
@@ -131,7 +132,9 @@ export default function PostComposer({ onPostSubmit }) {
   const handleSubmit = async () => {
     if (!content.trim() && files.length === 0) return;
     if (nsfwStatuses.some(s => s?.blocked)) return;
+    if (isSubmitting) return;
     
+    setIsSubmitting(true);
     const formData = new FormData();
     formData.append("content", content);
     if (location.trim() !== '') formData.append("location", location);
@@ -144,11 +147,15 @@ export default function PostComposer({ onPostSubmit }) {
         body: formData
       });
       if (data.success && onPostSubmit) onPostSubmit();
-    } catch(err) { console.error("Failed to create post", err); }
-    
-    setContent(''); setFiles([]); setNsfwStatuses([]); setLocation('');
-    setShowEmojiPicker(false); setShowLocationInput(false);
-    if(fileInputRef.current) fileInputRef.current.value = "";
+      
+      setContent(''); setFiles([]); setNsfwStatuses([]); setLocation('');
+      setShowEmojiPicker(false); setShowLocationInput(false);
+      if(fileInputRef.current) fileInputRef.current.value = "";
+    } catch(err) { 
+      console.error("Failed to create post", err); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInput = (e) => {
@@ -157,7 +164,7 @@ export default function PostComposer({ onPostSubmit }) {
     setContent(e.target.value);
   };
 
-  const isSubmitDisabled = (!content.trim() && files.length === 0) || nsfwStatuses.some(s => s?.blocked) || checkingNsfw;
+  const isSubmitDisabled = (!content.trim() && files.length === 0) || nsfwStatuses.some(s => s?.blocked) || checkingNsfw || isSubmitting;
 
   return (
     <div className="border-b border-gray-200 dark:border-zinc-800 p-4 pb-2">
@@ -254,7 +261,7 @@ export default function PostComposer({ onPostSubmit }) {
               <button onClick={() => { setShowLocationInput(!showLocationInput); setShowEmojiPicker(false); }} className={`hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block ${showLocationInput ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`} title="Location"><MapPin size={20} /></button>
             </div>
             <button onClick={handleSubmit} disabled={isSubmitDisabled} className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-1.5 px-4 rounded-full transition">
-              {checkingNsfw ? 'Checking...' : 'Post'}
+              {isSubmitting ? 'Posting...' : (checkingNsfw ? 'Checking...' : 'Post')}
             </button>
           </div>
         </div>
