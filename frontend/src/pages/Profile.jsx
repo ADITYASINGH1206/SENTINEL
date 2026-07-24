@@ -93,16 +93,16 @@ export default function Profile() {
   const handleEditSave = async () => {
       try {
           const formData = new FormData();
-          formData.append('display_name', editForm.display_name || '');
-          formData.append('bio', editForm.bio || '');
-          formData.append('location', editForm.location || '');
-          formData.append('website', editForm.website || '');
-          formData.append('wallet_address', editForm.wallet_address || '');
-          formData.append('cover_url', editForm.cover_url || '');
+          
+          Object.keys(editForm).forEach(key => {
+              if (editForm[key] !== undefined) {
+                  formData.append(key, editForm[key]);
+              }
+          });
+
           if (avatarFile) {
               formData.append('avatar_file', avatarFile);
-          } else if (editForm.avatar_url) {
-              formData.append('avatar_url', editForm.avatar_url);
+              formData.delete('avatar_url'); // Prevents conflict if both exist
           }
           
           const res = await apiFetch('/api/v1/users/profile', {
@@ -117,6 +117,7 @@ export default function Profile() {
           }
       } catch (err) {
           console.error(err);
+          alert("Failed to save profile: " + err.message);
       }
   };
 
