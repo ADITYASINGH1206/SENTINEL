@@ -95,7 +95,7 @@ export default function PostDetail() {
                      </div>
                  </div>
                  
-                 <p className="text-sm text-gray-400 italic mt-4">
+                 <p className="text-sm italic text-gray-400 line-clamp-3 overflow-hidden mt-4">
                      {post.analysis_summary || "No detailed analysis available."}
                  </p>
               </div>

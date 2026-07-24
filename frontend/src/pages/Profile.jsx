@@ -142,9 +142,9 @@ export default function Profile() {
              <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username; }} alt="Avatar" className="w-32 h-32 bg-gray-900 rounded-full border-4 border-gray-900 -mt-16 relative" />
              <div className="mt-4">
                  {isOwnProfile ? (
-                     <button onClick={() => { setEditForm(profileUser); setShowEditModal(true); }} className="border border-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-full transition">Edit Profile</button>
+                     <button onClick={() => { setEditForm(profileUser); setShowEditModal(true); }} className="px-4 py-1.5 rounded-full font-semibold border transition-colors border-gray-300 bg-white text-gray-900 hover:bg-gray-100 dark:border-gray-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800">Edit Profile</button>
                  ) : (
-                     <button onClick={handleFollowToggle} className={`${isFollowing ? 'border border-gray-600 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500' : 'bg-white text-black hover:bg-gray-200'} font-bold py-2 px-6 rounded-full transition`}>
+                     <button onClick={handleFollowToggle} className={`${isFollowing ? 'border border-gray-300 dark:border-gray-600 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 text-gray-900 dark:text-white' : 'border border-gray-300 bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200'} font-bold py-2 px-6 rounded-full transition-colors`}>
                          {isFollowing ? 'Following' : 'Follow'}
                      </button>
                  )}
@@ -158,20 +158,20 @@ export default function Profile() {
              
              {profileUser.wallet_address && (
                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
-                     <span className="font-mono bg-gray-800 px-2 py-1 rounded">{profileUser.wallet_address.slice(0,6)}...{profileUser.wallet_address.slice(-4)}</span>
+                     <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{profileUser.wallet_address.slice(0,6)}...{profileUser.wallet_address.slice(-4)}</span>
                  </div>
              )}
              
              <div className="flex gap-4 text-sm text-gray-500">
-                 <span onClick={() => openSocialModal('following')} className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.following}</strong> Following</span>
-                 <span onClick={() => openSocialModal('followers')} className="cursor-pointer hover:underline"><strong className="text-white">{socialCounts.followers}</strong> Followers</span>
+                 <span onClick={() => openSocialModal('following')} className="cursor-pointer hover:underline"><strong className="text-gray-900 dark:text-white">{socialCounts.following}</strong> Following</span>
+                 <span onClick={() => openSocialModal('followers')} className="cursor-pointer hover:underline"><strong className="text-gray-900 dark:text-white">{socialCounts.followers}</strong> Followers</span>
              </div>
          </div>
       </div>
 
-      <div className="flex border-b border-gray-800">
-          <button onClick={()=>setActiveTab('posts')} className={`flex-1 py-4 font-bold text-center hover:bg-gray-800 transition ${activeTab==='posts' ? 'border-b-2 border-blue-500 text-white' : 'text-gray-500'}`}>Posts</button>
-          <button onClick={()=>setActiveTab('reposts')} className={`flex-1 py-4 font-bold text-center hover:bg-gray-800 transition ${activeTab==='reposts' ? 'border-b-2 border-blue-500 text-white' : 'text-gray-500'}`}>Reposts</button>
+      <div className="flex border-b border-gray-200 dark:border-gray-800">
+          <button onClick={()=>setActiveTab('posts')} className={`flex-1 py-4 font-bold text-center transition ${activeTab==='posts' ? 'border-b-4 border-blue-500 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'}`}>Posts</button>
+          <button onClick={()=>setActiveTab('reposts')} className={`flex-1 py-4 font-bold text-center transition ${activeTab==='reposts' ? 'border-b-4 border-blue-500 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'}`}>Reposts</button>
       </div>
 
       <div className="pb-20">

@@ -109,7 +109,11 @@ export const createPost = async (req, res) => {
                        const flaggedCategories = data?.safety?.flagged_categories ?? [];
                        const isAiGenerated = data?.ai_detection?.is_ai_generated ?? false;
                        
-                       const analysisSummary = [data?.safety?.summary, data?.ai_detection?.reasoning].filter(Boolean).join(" ");
+                       let rawSummary = [data?.safety?.summary, data?.ai_detection?.reasoning].filter(Boolean).join(" ");
+                       let summaryText = rawSummary;
+                       if (summaryText.length > 250) {
+                            summaryText = summaryText.substring(0, 247).trim() + "...";
+                       }
 
                        if (isAiGenerated || riskScore >= 50 || flaggedCategories.length > 0) {
                             isLabeled = true;
@@ -118,7 +122,7 @@ export const createPost = async (req, res) => {
                        Object.assign(updatePayload, {
                             domain_topic: domainTopic,
                             sub_topics: subTopics,
-                            analysis_summary: analysisSummary.trim(),
+                            analysis_summary: summaryText.trim(),
                             ai_confidence: aiConfidence,
                             risk_score: riskScore,
                             flagged_categories: flaggedCategories

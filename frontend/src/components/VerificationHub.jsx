@@ -162,7 +162,7 @@ export default function VerificationHub() {
   const finalizedContent = contentList.filter(c => c.status === 'finalized');
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
+    <div className="min-h-screen bg-white text-gray-900 dark:bg-[#0d1117] dark:text-white p-8">
       {/* Header */}
       <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-blue-400 flex items-center gap-3">
@@ -218,7 +218,7 @@ export default function VerificationHub() {
                   const isVerifying = verifyingId === item.id;
                   
                   return (
-                    <div key={item.id} className="bg-gray-900 border border-gray-800 p-6 rounded-xl shadow-lg relative overflow-hidden transition-all hover:border-gray-700">
+                    <div key={item.id} className="bg-slate-50 border border-gray-200 dark:bg-slate-900/60 dark:border-gray-800 p-6 rounded-xl shadow-lg relative overflow-hidden transition-all hover:border-gray-300 dark:hover:border-gray-700">
                       {isVerifying && (
                         <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
                           <Loader2 className="animate-spin h-8 w-8 text-blue-500 mb-2" />
@@ -276,7 +276,7 @@ export default function VerificationHub() {
                 <p className="text-gray-500 text-center py-12">No finalized records yet.</p>
              ) : (
                 finalizedContent.map(item => (
-                   <div key={item.id} className="bg-gray-900 border border-green-500/30 p-6 rounded-xl shadow-lg">
+                   <div key={item.id} className="bg-slate-50 dark:bg-slate-900/60 border border-green-500/30 p-6 rounded-xl shadow-lg">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${item.type === 'post' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' : 'bg-orange-500/20 text-orange-400 border border-orange-500/50'}`}>
@@ -333,12 +333,12 @@ export default function VerificationHub() {
                 ))
              )
           ) : activeTab === 'manual' ? (
-             <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold text-white mb-2">Universal On-Chain Verifier</h2>
-                <p className="text-gray-400 mb-6">Paste the raw text of any post or a direct cryptographic hash to verify its authenticity instantly against the Sepolia blockchain.</p>
+             <div className="bg-slate-50 border border-gray-200 dark:bg-slate-900/60 dark:border-gray-800 p-8 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Universal On-Chain Verifier</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">Paste the raw text of any post or a direct cryptographic hash to verify its authenticity instantly against the Sepolia blockchain.</p>
                 
                 <textarea 
-                   className="w-full bg-gray-950 border border-gray-700 rounded-lg p-4 text-white font-mono text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors"
+                   className="w-full bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-4 text-gray-900 dark:text-white font-mono text-sm resize-none focus:outline-none focus:border-purple-500 transition-colors"
                    rows="4"
                    placeholder="Paste post text or 0x... hash here"
                    value={manualInput}

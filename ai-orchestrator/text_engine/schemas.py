@@ -42,7 +42,8 @@ class AIGenerationDetection(BaseModel):
         description="List of stylometric markers that indicate AI authorship.",
     )
     reasoning: str = Field(
-        description="Brief explanation of the detection rationale."
+        max_length=150,
+        description="Concise 1-2 sentence justification of AI detection rationale. MAXIMUM 3 LINES OR 150 CHARACTERS."
     )
 
 
@@ -89,7 +90,8 @@ class HarmSafetyAssessment(BaseModel):
         description="List of harm categories that were detected in the text.",
     )
     summary: str = Field(
-        description="Brief explanation of identified risks."
+        max_length=150,
+        description="Concise summary of identified risks and flagged categories. MAXIMUM 3 LINES OR 150 CHARACTERS."
     )
 
 
