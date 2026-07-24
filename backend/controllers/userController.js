@@ -10,8 +10,19 @@ const __dirname = path.dirname(__filename);
 export const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { bio, wallet_address, cover_url } = req.body;
-        let { avatar_url } = req.body;
+        const updates = {};
+        const allowedFields = ['display_name', 'bio', 'location', 'website', 'wallet_address', 'cover_url', 'avatar_url'];
+        
+        allowedFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                // Coerce empty strings to null for wallet_address to avoid unique constraint violations
+                if (field === 'wallet_address' && req.body[field].trim() === '') {
+                    updates[field] = null;
+                } else {
+                    updates[field] = req.body[field];
+                }
+            }
+        });
         
         if (req.file) {
              const filename = `avatar-${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
@@ -24,12 +35,12 @@ export const updateProfile = async (req, res) => {
                  throw new Error("Failed to upload avatar to Supabase storage");
              }
              const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(`public/${filename}`);
-             avatar_url = publicUrlData.publicUrl;
+             updates.avatar_url = publicUrlData.publicUrl;
         }
         
         const { data, error } = await supabase
             .from('users')
-            .update({ bio, wallet_address, avatar_url, cover_url })
+            .update(updates)
             .eq('id', userId)
             .select()
             .single();

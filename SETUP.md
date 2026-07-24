@@ -262,7 +262,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8002
 ```bash
 cd ai-orchestrator
 venv\Scripts\activate
-python app.py
+uvicorn app:app --host 0.0.0.0 --port 5000 --reload
 ```
 
 Expected output:

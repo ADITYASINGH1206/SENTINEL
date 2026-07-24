@@ -6,6 +6,8 @@ import * as nsfwjs from 'nsfwjs';
 import { Web3Context } from '../context/Web3Context';
 import { useContext } from 'react';
 import { toast } from 'react-toastify';
+import EmojiPicker from 'emoji-picker-react';
+import { useTheme } from '../context/ThemeContext';
 
 // ---------------------------------------------------------------------------
 // nsfwjs client-side NSFW pre-check
@@ -78,8 +80,12 @@ export default function PostComposer({ onPostSubmit }) {
   const [files, setFiles] = useState([]);
   const [nsfwStatuses, setNsfwStatuses] = useState([]);
   const [checkingNsfw, setCheckingNsfw] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [location, setLocation] = useState('');
   const fileInputRef = useRef(null);
   const { account } = useContext(Web3Context);
+  const { theme } = useTheme();
 
   const handleFileChange = useCallback(async (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -128,6 +134,7 @@ export default function PostComposer({ onPostSubmit }) {
     
     const formData = new FormData();
     formData.append("content", content);
+    if (location.trim() !== '') formData.append("location", location);
     files.forEach(f => formData.append("media", f));
     if (account) formData.append("walletAddress", account);
 
@@ -139,7 +146,8 @@ export default function PostComposer({ onPostSubmit }) {
       if (data.success && onPostSubmit) onPostSubmit();
     } catch(err) { console.error("Failed to create post", err); }
     
-    setContent(''); setFiles([]); setNsfwStatuses([]);
+    setContent(''); setFiles([]); setNsfwStatuses([]); setLocation('');
+    setShowEmojiPicker(false); setShowLocationInput(false);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -162,6 +170,43 @@ export default function PostComposer({ onPostSubmit }) {
              value={content} 
              onChange={handleInput} 
           />
+
+          {location && (
+            <div className="flex items-center gap-1 text-xs text-blue-500 font-medium mt-1 mb-2">
+                <MapPin className="w-3 h-3" />
+                <span>{location}</span>
+                <button onClick={() => setLocation('')} className="ml-1 text-gray-400 hover:text-red-500"><X size={12} /></button>
+            </div>
+          )}
+
+          {/* Popovers */}
+          <div className="relative">
+              {showEmojiPicker && (
+                  <div className="absolute z-50 mt-2">
+                      <EmojiPicker 
+                          theme={theme === 'dark' ? 'dark' : 'light'} 
+                          onEmojiClick={(emojiObj) => {
+                              setContent(prev => prev + emojiObj.emoji);
+                              setShowEmojiPicker(false);
+                          }}
+                      />
+                  </div>
+              )}
+              {showLocationInput && (
+                  <div className="absolute z-50 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl flex items-center gap-2">
+                      <MapPin size={16} className="text-gray-400" />
+                      <input 
+                          type="text" 
+                          placeholder="e.g. New York, USA" 
+                          className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-1.5 rounded-md text-sm outline-none"
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') setShowLocationInput(false); }}
+                      />
+                      <button onClick={() => setShowLocationInput(false)} className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm font-bold">Set</button>
+                  </div>
+              )}
+          </div>
 
           {/* File attachments grid */}
           {files.length > 0 && (
@@ -199,14 +244,14 @@ export default function PostComposer({ onPostSubmit }) {
           )}
           
           <div className="border-t border-gray-200 dark:border-zinc-800 pt-3 flex justify-between items-center mt-3">
-            <div className="flex gap-1 text-blue-500">
+            <div className="flex gap-1 text-blue-500 relative">
               <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileChange} accept="image/*,video/*" multiple />
               <button onClick={() => fileInputRef.current?.click()} className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="Media"><Image size={20} /></button>
-              <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="GIF"><FileType2 size={20} /></button>
-              <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Poll"><AlignLeft size={20} /></button>
-              <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="Emoji"><Smile size={20} /></button>
-              <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Schedule"><CalendarClock size={20} /></button>
-              <button className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Location"><MapPin size={20} /></button>
+              <button onClick={() => toast.info("🖼️ GIF library integration coming soon in V2!")} className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition" title="GIF"><FileType2 size={20} /></button>
+              <button onClick={() => toast.info("📊 Interactive Polls coming soon in V2!")} className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Poll"><AlignLeft size={20} /></button>
+              <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowLocationInput(false); }} className={`hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition ${showEmojiPicker ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`} title="Emoji"><Smile size={20} /></button>
+              <button onClick={() => toast.info("⏰ Post scheduling coming soon!")} className="hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block" title="Schedule"><CalendarClock size={20} /></button>
+              <button onClick={() => { setShowLocationInput(!showLocationInput); setShowEmojiPicker(false); }} className={`hover:bg-blue-50 dark:hover:bg-blue-500/10 p-2 rounded-full transition hidden sm:block ${showLocationInput ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`} title="Location"><MapPin size={20} /></button>
             </div>
             <button onClick={handleSubmit} disabled={isSubmitDisabled} className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-1.5 px-4 rounded-full transition">
               {checkingNsfw ? 'Checking...' : 'Post'}

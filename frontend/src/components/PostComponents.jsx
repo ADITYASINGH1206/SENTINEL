@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
@@ -41,20 +41,20 @@ export function CommentSection({ postId }) {
     };
 
     return (
-        <div className="mt-4 border-t border-gray-800 pt-4 px-2">
-            {comments.length === 0 && <p className="text-sm text-gray-500">No comments yet.</p>}
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4 px-2">
+            {comments.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet.</p>}
             {comments.map(c => (
                 <div key={c.id} className="mb-3 flex gap-3">
-                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
+                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full" />
                     <div>
-                        <span className="font-bold text-sm">{c.users?.display_name || c.users?.username}</span>
-                        <p className="text-gray-300 text-sm">{c.content}</p>
+                        <span className="font-bold text-sm text-gray-900 dark:text-white">{c.users?.display_name || c.users?.username}</span>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">{c.content}</p>
                     </div>
                 </div>
             ))}
             <div className="flex gap-2 mt-3">
-                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-800 p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent" />
-                <button onClick={handleAddComment} className="bg-blue-500 px-4 rounded-full text-sm font-bold">Reply</button>
+                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent dark:border-transparent dark:focus:border-blue-500 placeholder-gray-500 dark:placeholder-gray-400" />
+                <button onClick={handleAddComment} className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-full text-sm font-bold transition">Reply</button>
             </div>
         </div>
     );
@@ -82,6 +82,7 @@ export function PostCard({ post, isRepost }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showSensitive, setShowSensitive] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked || false);
 
   const hasIndexTags = post.image_labels?.some(l => l.startsWith('sensitive_index_'));
   const isCurrentSensitive = hasIndexTags 
@@ -130,6 +131,19 @@ export function PostCard({ post, isRepost }) {
           await apiFetch(`/api/v1/users/${post.user_id}/follow`, { method: 'POST' });
       } catch (err) {
           setIsFollowing(!isFollowing);
+      }
+  };
+
+  const handleBookmark = async () => {
+      setIsBookmarked(!isBookmarked);
+      try {
+          const res = await apiFetch(`/api/v1/bookmarks/toggle/${post.id}`, { method: 'POST' });
+          if (res.success) {
+              setIsBookmarked(res.bookmarked);
+          }
+      } catch (err) {
+          setIsBookmarked(!isBookmarked);
+          toast.error("Failed to bookmark post");
       }
   };
 
@@ -201,6 +215,12 @@ export function PostCard({ post, isRepost }) {
                 </span>
 
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+                {post.location && (
+                  <span className="flex items-center gap-1 text-xs text-blue-500 font-medium ml-2 border border-blue-500/30 rounded-full px-2 py-0.5 bg-blue-500/10">
+                    <MapPin className="w-3 h-3"/>
+                    {post.location}
+                  </span>
+                )}
                 {user?.id !== post.user_id && (
                     <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
                         {isFollowing ? 'Following' : 'Follow'}
@@ -330,7 +350,9 @@ export function PostCard({ post, isRepost }) {
                 <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
             </div>
             <div className="flex items-center gap-1 justify-end flex-1">
-                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Bookmark size={18} /></button>
+                <button onClick={handleBookmark} className={`p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition ${isBookmarked ? 'text-blue-500' : ''}`}>
+                    <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
                 <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Upload size={18} /></button>
             </div>
           </div>
