@@ -82,6 +82,7 @@ export function PostCard({ post, isRepost }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showSensitive, setShowSensitive] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked || false);
 
   const hasIndexTags = post.image_labels?.some(l => l.startsWith('sensitive_index_'));
   const isCurrentSensitive = hasIndexTags 
@@ -130,6 +131,19 @@ export function PostCard({ post, isRepost }) {
           await apiFetch(`/api/v1/users/${post.user_id}/follow`, { method: 'POST' });
       } catch (err) {
           setIsFollowing(!isFollowing);
+      }
+  };
+
+  const handleBookmark = async () => {
+      setIsBookmarked(!isBookmarked);
+      try {
+          const res = await apiFetch(`/api/v1/bookmarks/toggle/${post.id}`, { method: 'POST' });
+          if (res.success) {
+              setIsBookmarked(res.bookmarked);
+          }
+      } catch (err) {
+          setIsBookmarked(!isBookmarked);
+          toast.error("Failed to bookmark post");
       }
   };
 
@@ -330,7 +344,9 @@ export function PostCard({ post, isRepost }) {
                 <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
             </div>
             <div className="flex items-center gap-1 justify-end flex-1">
-                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Bookmark size={18} /></button>
+                <button onClick={handleBookmark} className={`p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition ${isBookmarked ? 'text-blue-500' : ''}`}>
+                    <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
                 <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Upload size={18} /></button>
             </div>
           </div>
