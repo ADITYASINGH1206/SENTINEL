@@ -1,11 +1,12 @@
 import express from 'express';
 import multer from 'multer';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import { updateProfile, toggleFollow, getSocialCounts, getUserProfile, getFollowers, getFollowing } from '../controllers/userController.js';
+import { updateProfile, toggleFollow, getSocialCounts, getUserProfile, getFollowers, getFollowing, searchUsers } from '../controllers/userController.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+router.get('/search', searchUsers);
 router.put('/profile', verifyToken, upload.single('avatar_file'), updateProfile);
 router.post('/:id/follow', verifyToken, toggleFollow);
 router.get('/:id/social-counts', getSocialCounts);

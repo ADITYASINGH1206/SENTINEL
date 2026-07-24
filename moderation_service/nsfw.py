@@ -13,6 +13,7 @@ import os
 import tempfile
 
 from nudenet import NudeDetector
+from typing import Union, Optional
 
 
 # Explicit anatomy labels — any detection at medium-high confidence → BLOCK
@@ -46,10 +47,11 @@ SUGGESTIVE_LABEL_THRESHOLD = 0.40    # Sexy/suggestive → label as 18+
 # ---------------------------------------------------------------------------
 # Lazy-loaded detector
 # ---------------------------------------------------------------------------
-_detector: NudeDetector | str | None = None
+# ---------------------------------------------------------------------------
+_detector: Optional[Union[NudeDetector, str]] = None
 
 
-def _get_detector() -> NudeDetector | str:
+def _get_detector() -> Union[NudeDetector, str]:
     global _detector
     if _detector is None:
         model_path = os.getenv("NUDENET_MODEL_PATH", "models/nsfw_nudenet/detector.onnx")

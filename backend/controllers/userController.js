@@ -181,3 +181,24 @@ export const getUserProfile = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+export const searchUsers = async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query || query.trim().length < 1) {
+            return res.json({ success: true, users: [] });
+        }
+        
+        // Search by username or display_name using case-insensitive like
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url, bio')
+            .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+            .limit(20);
+            
+        if (error) throw error;
+        res.json({ success: true, users: data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

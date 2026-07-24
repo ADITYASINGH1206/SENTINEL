@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { apiFetch } from '../services/api';
-import { ShieldCheck, CheckCircle2, Loader2, ThumbsUp, ThumbsDown, Lock, ExternalLink, MessageSquare, FileText } from 'lucide-react';
+import { ShieldCheck, Lock, CheckCircle, AlertTriangle, AlertCircle, PlaySquare, FileText, Image, Search, Loader2, CheckCircle2, ThumbsUp, ThumbsDown, ExternalLink, MessageSquare } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ethers } from 'ethers';
+import { CONTRACT_ADDRESS, SENTINEL_ABI } from '../config/constants';
 
 export default function VerificationHub() {
   const { account, isConnected, connectWallet } = useWallet();
@@ -11,25 +13,45 @@ export default function VerificationHub() {
   const [verifyingId, setVerifyingId] = useState(null);
   const [localVerified, setLocalVerified] = useState(new Set()); // Track UI state to prevent immediate double clicks
   
+  const [trustScore, setTrustScore] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
+  const [reportedContent, setReportedContent] = useState([]);
+  const [isClaiming, setIsClaiming] = useState(false);
+  
   // Manual Verification State
   const [manualInput, setManualInput] = useState('');
   const [manualResult, setManualResult] = useState(null);
 
   const fetchContent = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/content');
-      const data = await res.json();
-      if (data.success) {
-        setContentList(data.content);
+      const [contentRes, reportedRes, lbRes] = await Promise.all([
+         fetch('http://localhost:8000/api/content'),
+         fetch('http://localhost:8000/api/content/reported'),
+         fetch('http://localhost:8000/api/leaderboard')
+      ]);
+      
+      const contentData = await contentRes.json();
+      const reportedData = await reportedRes.json();
+      const lbData = await lbRes.json();
+      
+      if (contentData.success) setContentList(contentData.content);
+      if (reportedData.success) setReportedContent(reportedData.content);
+      
+      if (lbData.success && account) {
+         const userStat = lbData.leaderboard.find(u => u.address.toLowerCase() === account.toLowerCase());
+         if (userStat) {
+             setTrustScore(userStat.trustScore || 0);
+             setPendingBalance(userStat.pendingBalance || 0);
+         }
       }
     } catch (err) {
-      console.error("Failed to fetch content", err);
+      console.error("Failed to fetch data", err);
     }
   };
 
   useEffect(() => {
     fetchContent();
-  }, []);
+  }, [account]);
 
   const handleVote = async (contentId, voteType) => {
     if (!isConnected) {
@@ -77,6 +99,34 @@ export default function VerificationHub() {
       }
     } catch (err) {
       toast.error("Failed to compute hash locally.");
+    }
+  };
+
+  const handleClaimTokens = async () => {
+    if (pendingBalance < 100) {
+        toast.error("You need at least 100 pending tokens to claim.");
+        return;
+    }
+    
+    setIsClaiming(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/claim-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: account })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPendingBalance(data.newBalance);
+        toast.success(`Successfully claimed tokens! Tx: ${data.txHash.substring(0,10)}...`);
+        fetchContent();
+      } else {
+        toast.error(data.error || "Claim failed");
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsClaiming(false);
     }
   };
 
@@ -159,7 +209,8 @@ export default function VerificationHub() {
   };
 
   const pendingContent = contentList.filter(c => c.status === 'pending');
-  const finalizedContent = contentList.filter(c => c.status === 'finalized');
+  const finalizedContent = [...contentList, ...reportedContent].filter(c => c.status === 'finalized');
+  const pendingReportedContent = reportedContent.filter(c => c.status === 'pending');
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-[#0d1117] dark:text-white p-8">
@@ -170,17 +221,38 @@ export default function VerificationHub() {
           Verification Hub
         </h1>
         
-        <button 
-          onClick={connectWallet} 
-          disabled={isConnected}
-          className={`px-6 py-2 rounded-full font-bold transition-all ${
-            isConnected 
-              ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
-              : 'bg-blue-600 hover:bg-blue-500 text-white'
-          }`}
-        >
-          {isConnected && account ? `Connected: ${account.substring(0,6)}...${account.substring(account.length-4)}` : "Connect Wallet"}
-        </button>
+        <div className="flex items-center gap-4">
+            {isConnected && (
+               <div className="flex items-center gap-2">
+                   <div className="flex flex-col text-right">
+                       <span className="text-xs text-gray-500 font-bold uppercase">Pending</span>
+                       <span className="text-sm text-green-400 font-bold">{pendingBalance} $SNTL</span>
+                   </div>
+                   <button 
+                      onClick={handleClaimTokens}
+                      disabled={pendingBalance < 100 || isClaiming}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                          pendingBalance >= 100 && !isClaiming
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 text-white shadow-lg' 
+                            : 'bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed'
+                      }`}
+                   >
+                      {isClaiming ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Claim'}
+                   </button>
+               </div>
+            )}
+            <button 
+              onClick={connectWallet} 
+              disabled={isConnected}
+              className={`px-6 py-2 rounded-full font-bold transition-all ${
+                isConnected 
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              {isConnected && account ? `Connected: ${account.substring(0,6)}...${account.substring(account.length-4)}` : "Connect Wallet"}
+            </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -194,10 +266,10 @@ export default function VerificationHub() {
               Pending Verification ({pendingContent.length})
            </button>
            <button 
-              onClick={() => setActiveTab('finalized')}
-              className={`pb-3 px-4 font-semibold text-lg transition-colors ${activeTab === 'finalized' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-500 hover:text-gray-300'}`}
+              onClick={() => setActiveTab('reported')}
+              className={`pb-3 px-4 font-semibold text-lg transition-colors ${activeTab === 'reported' ? 'text-red-400 border-b-2 border-red-400' : 'text-gray-500 hover:text-gray-300'}`}
            >
-              On-Chain Record ({finalizedContent.length})
+              Reported Posts ({pendingReportedContent.length})
            </button>
            <button 
               onClick={() => setActiveTab('manual')}
@@ -250,7 +322,7 @@ export default function VerificationHub() {
                           }`}
                         >
                           <ThumbsUp className="w-4 h-4"/>
-                          <span>Vote Authentic</span>
+                          <span>Authentic (+100 SNTL)</span>
                         </button>
                         <button 
                           onClick={() => handleVote(item.id, 'fake')}
@@ -262,7 +334,7 @@ export default function VerificationHub() {
                           }`}
                         >
                           <ThumbsDown className="w-4 h-4"/>
-                          <span>Vote Fake</span>
+                          <span>Fake (+100 SNTL)</span>
                         </button>
                       </div>
                       
@@ -273,66 +345,76 @@ export default function VerificationHub() {
                   );
                 })
              )
-          ) : activeTab === 'finalized' ? (
-             finalizedContent.length === 0 ? (
-                <p className="text-gray-500 text-center py-12">No finalized records yet.</p>
+          ) : activeTab === 'reported' ? (
+             trustScore < 0 ? (
+                <div className="flex flex-col items-center justify-center p-12 bg-slate-50 border border-gray-200 dark:bg-slate-900/60 dark:border-gray-800 rounded-xl shadow-lg">
+                    <Lock className="w-16 h-16 text-gray-400 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Reported Feed Locked</h2>
+                    <p className="text-gray-500 text-center max-w-md">
+                        Unlock at 50 Trust Score. Keep verifying normal posts accurately to build your reputation. Current Trust Score: {trustScore}
+                    </p>
+                </div>
+             ) : pendingReportedContent.length === 0 ? (
+                <p className="text-gray-500 text-center py-12">No reported content pending verification.</p>
              ) : (
-                finalizedContent.map(item => (
-                   <div key={item.id} className="bg-slate-50 dark:bg-slate-900/60 border border-green-500/30 p-6 rounded-xl shadow-lg">
+                pendingReportedContent.map(item => {
+                  const hasVoted = localVerified.has(item.id) || (item.votedUsers && item.votedUsers.includes(account));
+                  const isVerifying = verifyingId === item.id;
+                  
+                  return (
+                    <div key={item.id} className="bg-slate-50 border border-gray-200 dark:bg-slate-900/60 dark:border-gray-800 p-6 rounded-xl shadow-lg relative overflow-hidden transition-all hover:border-gray-300 dark:hover:border-gray-700 mb-6">
+                      {isVerifying && (
+                        <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+                          <Loader2 className="animate-spin h-8 w-8 text-blue-500 mb-2" />
+                          <p className="font-bold text-blue-400">Recording Vote...</p>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${item.type === 'post' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' : 'bg-orange-500/20 text-orange-400 border border-orange-500/50'}`}>
-                             {item.type === 'post' ? <FileText size={12}/> : <MessageSquare size={12}/>}
-                             {item.type.toUpperCase()}
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20`}>
+                             <ShieldCheck size={12}/> REPORTED CONTENT
                           </span>
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">by {item.author}</span>
                         </div>
+                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">ID: {item.id}</span>
                       </div>
                       
-                      <p className="text-base font-medium text-slate-900 dark:text-slate-100 my-3 italic">"{item.text}"</p>
-                      
-                      {/* Immutable Proof Card */}
-                      <div className="w-full bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl p-5 shadow-inner">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                           <div>
-                             <h3 className="font-bold text-blue-300 flex items-center gap-2 mb-1">
-                                <Lock size={18} />
-                                Immutable Proof
-                             </h3>
-                             <p className="text-sm text-gray-400 font-mono break-all">
-                               Hash: {item.contentHash ? `${item.contentHash.substring(0, 10)}...${item.contentHash.substring(item.contentHash.length - 8)}` : 'N/A'}
-                             </p>
-                           </div>
-                           
-                           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                              <button 
-                                 onClick={() => verifyLocalIntegrity(item.text, item.contentHash)}
-                                 className="px-4 py-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-                              >
-                                 <ShieldCheck size={14} /> Verify Local Integrity
-                              </button>
-                              {item.txHash && (
-                                 <a 
-                                    href={`https://sepolia.blockscout.com/tx/${item.txHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-300 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-                                 >
-                                    View Record <ExternalLink size={14} />
-                                 </a>
-                              )}
-                           </div>
-                        </div>
-                        
-                        <div className="mt-4 pt-4 border-t border-blue-500/20 flex items-center justify-between">
-                            <span className="text-gray-400 text-sm">Community Verdict:</span>
-                            <span className={`font-bold capitalize px-3 py-1 rounded-full text-xs ${item.verdict === 'authentic' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'}`}>
-                               {item.verdict}
-                            </span>
-                        </div>
+                      <p className="text-lg font-bold text-slate-900 dark:text-slate-100 my-4">"{item.text}"</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <button 
+                          onClick={() => handleVote(item.id, 'authentic')}
+                          disabled={hasVoted}
+                          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition-all shadow-sm ${
+                            hasVoted 
+                             ? 'bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 border border-gray-300 dark:border-gray-700 cursor-not-allowed'
+                             : 'text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500'
+                          }`}
+                        >
+                          <ThumbsUp className="w-5 h-5"/>
+                          <span>Authentic (+100 SNTL)</span>
+                        </button>
+                        <button 
+                          onClick={() => handleVote(item.id, 'fake')}
+                          disabled={hasVoted}
+                          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition-all shadow-sm ${
+                            hasVoted 
+                             ? 'bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 border border-gray-300 dark:border-gray-700 cursor-not-allowed'
+                             : 'text-white bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500'
+                          }`}
+                        >
+                          <ThumbsDown className="w-5 h-5"/>
+                          <span>Fake (+100 SNTL)</span>
+                        </button>
                       </div>
-                   </div>
-                ))
+                      
+                      {hasVoted && (
+                         <p className="text-center text-sm text-gray-500 mt-4">Vote recorded. Waiting for consensus...</p>
+                      )}
+                    </div>
+                  );
+                })
              )
           ) : activeTab === 'manual' ? (
              <div className="bg-slate-50 border border-gray-200 dark:bg-slate-900/60 dark:border-gray-800 p-8 rounded-xl shadow-lg">

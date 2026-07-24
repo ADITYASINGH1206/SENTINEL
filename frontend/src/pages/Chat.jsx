@@ -30,7 +30,7 @@ export default function Chat() {
 
     // Fetch messages when a conversation is selected
     useEffect(() => {
-        if (activeConversation) {
+        if (activeConversation && !activeConversation.isTemp) {
             const fetchThread = async () => {
                 try {
                     const res = await apiFetch(`/api/v1/messages/thread/${activeConversation.id}`);
@@ -51,7 +51,7 @@ export default function Chat() {
     const handleSearch = async (e) => {
         const query = e.target.value;
         setSearchQuery(query);
-        if (query.trim().length > 2) {
+        if (query.trim().length > 0) {
             setIsSearching(true);
             try {
                 const res = await apiFetch(`/api/v1/users/search?q=${query}`);

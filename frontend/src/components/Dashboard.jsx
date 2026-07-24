@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { CheckCircle2, Coins, Loader2, ThumbsUp, ThumbsDown, ShieldCheck, ExternalLink, Target, Lock } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ethers } from 'ethers';
+import { CONTRACT_ADDRESS, SENTINEL_ABI } from '../config/constants';
 import SubmitPost from './SubmitPost';
 import Leaderboard from './Leaderboard';
 
@@ -13,6 +15,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [pendingBalance, setPendingBalance] = useState(0);
   const [accuracyRate, setAccuracyRate] = useState(0);
+  const [trustScore, setTrustScore] = useState(0);
   const [verifiedPosts, setVerifiedPosts] = useState(new Set()); // Track local votes to prevent double-clicking
   
   // Action States
@@ -28,7 +31,7 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       // 1. Fetch Posts
-      const postsRes = await fetch('http://localhost:8000/api/posts');
+      const postsRes = await fetch('http://localhost:8000/api/v1/posts');
       const postsData = await postsRes.json();
       if (postsData.success) {
         setPosts(postsData.posts);
@@ -43,6 +46,7 @@ export default function Dashboard() {
           if (userStat) {
              setPendingBalance(userStat.pendingBalance);
              setAccuracyRate(userStat.accuracyRate);
+             setTrustScore(userStat.trustScore || 0);
           }
         }
       }
@@ -65,7 +69,7 @@ export default function Dashboard() {
     setVerifyingId(postId);
 
     try {
-      const response = await fetch('http://localhost:8000/api/verify-post', {
+      const response = await fetch('http://localhost:8000/api/verify-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account, postId, userVote })
@@ -94,30 +98,27 @@ export default function Dashboard() {
   };
 
   const handleClaimTokens = async () => {
-    if (pendingBalance < 500) return;
-    
+    if (pendingBalance < 100) return;
     setIsClaiming(true);
-    setClaimSuccessTx(null);
-
     try {
+      // Simulate API call to relay batch claim
       const response = await fetch('http://localhost:8000/api/claim-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account })
       });
-
       const data = await response.json();
-
+      
       if (data.success) {
         setClaimSuccessTx(data.txHash);
-        setPendingBalance(data.newBalance);
         toast.success(`Successfully claimed tokens!`);
-        fetchDashboardData(); // Refresh accuracy and stats
+        // Refresh dashboard data to reset pending balance
+        fetchDashboardData();
       } else {
-        toast.error(data.details || data.error || "Claim failed");
+        toast.error(data.error || "Failed to process claim.");
       }
-    } catch (err) {
-      toast.error(err.message);
+    } catch (error) {
+      toast.error("Network error while claiming tokens.");
     } finally {
       setIsClaiming(false);
     }
@@ -140,8 +141,8 @@ export default function Dashboard() {
     }
   };
 
-  const canClaim = pendingBalance >= 500;
-  const progressPercent = Math.min((pendingBalance / 500) * 100, 100);
+  const canClaim = pendingBalance >= 100;
+  const progressPercent = Math.min((pendingBalance / 100) * 100, 100);
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-8">
@@ -322,17 +323,30 @@ export default function Dashboard() {
             </h2>
             
             {/* User Stats Mini-Dashboard */}
-            <div className="mb-6 grid grid-cols-2 gap-4">
+            {trustScore >= 50 && (
+                <div className="mb-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/50 rounded-lg p-3 text-center animate-pulse">
+                    <p className="text-purple-400 font-bold flex justify-center items-center gap-2 text-sm uppercase tracking-wider">
+                        <ShieldCheck size={18} /> Elite Verifier
+                    </p>
+                </div>
+            )}
+            <div className="mb-6 grid grid-cols-3 gap-4">
                <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-center">
-                  <p className="text-gray-500 text-xs uppercase font-bold mb-1">Accuracy</p>
-                  <p className="text-xl font-bold text-green-400 flex justify-center items-center gap-1">
-                     <Target size={16}/> {accuracyRate}%
+                  <p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Accuracy</p>
+                  <p className="text-lg font-bold text-green-400 flex justify-center items-center gap-1">
+                     <Target size={14}/> {accuracyRate}%
                   </p>
                </div>
                <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-center">
-                  <p className="text-gray-500 text-xs uppercase font-bold mb-1">Pending</p>
-                  <p className="text-xl font-bold text-blue-400 flex justify-center items-center gap-1">
-                     <Coins size={16}/> {pendingBalance}
+                  <p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Pending</p>
+                  <p className="text-lg font-bold text-blue-400 flex justify-center items-center gap-1">
+                     <Coins size={14}/> {pendingBalance}
+                  </p>
+               </div>
+               <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-center">
+                  <p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Trust</p>
+                  <p className="text-lg font-bold text-purple-400 flex justify-center items-center gap-1">
+                     <ShieldCheck size={14}/> {trustScore}
                   </p>
                </div>
             </div>
@@ -342,7 +356,7 @@ export default function Dashboard() {
               <div className="flex justify-between text-sm mb-2 text-gray-400 font-medium">
                 <span>Accrual Goal</span>
                 <span className={canClaim ? "text-green-400 font-bold" : "text-white"}>
-                  {pendingBalance} / 500 $SNTL
+                  {pendingBalance} / 100 $SNTL
                 </span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden border border-gray-700">

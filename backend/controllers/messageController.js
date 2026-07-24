@@ -55,13 +55,30 @@ export const getThread = async (req, res) => {
 
         const { data: messages, error: msgError } = await supabase
             .from('messages')
-            .select('*, sender:sender_id(id, username, display_name, avatar_url)')
+            .select('*')
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true });
 
         if (msgError) throw msgError;
 
-        res.json({ success: true, messages });
+        // Fetch senders manually due to missing FK constraint
+        const senderIds = [...new Set(messages.map(m => m.sender_id))];
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url')
+            .in('id', senderIds);
+        
+        const userMap = {};
+        if (users) {
+            users.forEach(u => { userMap[u.id] = u; });
+        }
+
+        const enrichedMessages = messages.map(m => ({
+            ...m,
+            sender: userMap[m.sender_id] || { id: m.sender_id, username: 'Unknown', display_name: 'Unknown', avatar_url: null }
+        }));
+
+        res.json({ success: true, messages: enrichedMessages });
     } catch (err) {
         console.error('Error fetching thread:', err);
         res.status(500).json({ success: false, error: err.message });
@@ -111,12 +128,24 @@ export const sendMessage = async (req, res) => {
         const { data: message, error: msgError } = await supabase
             .from('messages')
             .insert({ conversation_id: conversationId, sender_id: senderId, content })
-            .select('*, sender:sender_id(id, username, display_name, avatar_url)')
+            .select('*')
             .single();
 
         if (msgError) throw msgError;
 
-        res.json({ success: true, message });
+        // Fetch sender manually due to missing FK constraint
+        const { data: user } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url')
+            .eq('id', senderId)
+            .single();
+
+        const enrichedMessage = {
+            ...message,
+            sender: user || { id: senderId, username: 'Unknown', display_name: 'Unknown', avatar_url: null }
+        };
+
+        res.json({ success: true, message: enrichedMessage });
     } catch (err) {
         console.error('Error sending message:', err);
         res.status(500).json({ success: false, error: err.message });
