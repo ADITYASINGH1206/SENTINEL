@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
@@ -215,6 +215,12 @@ export function PostCard({ post, isRepost }) {
                 </span>
 
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+                {post.location && (
+                  <span className="flex items-center gap-1 text-xs text-blue-500 font-medium ml-2 border border-blue-500/30 rounded-full px-2 py-0.5 bg-blue-500/10">
+                    <MapPin className="w-3 h-3"/>
+                    {post.location}
+                  </span>
+                )}
                 {user?.id !== post.user_id && (
                     <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
                         {isFollowing ? 'Following' : 'Follow'}

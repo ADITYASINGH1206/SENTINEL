@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
     "@tensorflow/tfjs": "^4.22.0",
+    "emoji-picker-react": "^4.19.1",
     "ethers": "^6.17.0",
     "lucide-react": "^1.25.0",
     "nsfwjs": "^4.3.0",

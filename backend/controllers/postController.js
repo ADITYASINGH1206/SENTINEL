@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 export const createPost = async (req, res) => {
     try {
-        const { content, walletAddress } = req.body;
+        const { content, walletAddress, location } = req.body;
         const userId = req.user.id;
         
         let mediaUrls = [];
@@ -35,9 +35,14 @@ export const createPost = async (req, res) => {
         }
         const mediaUrl = mediaUrls[0] || null; // For legacy backwards compat
 
+        const insertData = { user_id: userId, content, media_url: mediaUrl, media_urls: mediaUrls, ai_status: 'pending' };
+        if (location && location.trim() !== '') {
+            insertData.location = location.trim();
+        }
+
         const { data: newPost, error } = await supabase
             .from('posts')
-            .insert({ user_id: userId, content, media_url: mediaUrl, media_urls: mediaUrls, ai_status: 'pending' })
+            .insert(insertData)
             .select()
             .single();
             
