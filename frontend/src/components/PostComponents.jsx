@@ -83,6 +83,8 @@ export function PostCard({ post, isRepost }) {
   const [showSensitive, setShowSensitive] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked || false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportComment, setReportComment] = useState("");
 
   const hasIndexTags = post.image_labels?.some(l => l.startsWith('sensitive_index_'));
   const isCurrentSensitive = hasIndexTags 
@@ -169,7 +171,16 @@ export function PostCard({ post, isRepost }) {
       }
   };
 
-  const handleReport = async () => {
+  const handleReportClick = () => {
+      setShowMenu(false);
+      setShowReportModal(true);
+  };
+
+  const submitReport = async () => {
+      if (!reportComment.trim()) {
+          toast.error("Please enter a reason.");
+          return;
+      }
       try {
           await apiFetch(`/api/v1/reports`, {
               method: 'POST',
@@ -177,17 +188,20 @@ export function PostCard({ post, isRepost }) {
               body: JSON.stringify({
                   target_type: 'post',
                   target_id: post.id,
-                  reason: 'spam'
+                  reason: 'misleading',
+                  comment: reportComment
               })
           });
           toast.success("Post reported for moderation.");
-          setShowMenu(false);
+          setShowReportModal(false);
+          setReportComment("");
       } catch (err) {
           toast.error("Failed to report post.");
       }
   };
 
   return (
+    <>
     <div ref={targetRef} className="border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
       {isRepost && (
           <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-2 ml-10 font-bold">
@@ -206,13 +220,6 @@ export function PostCard({ post, isRepost }) {
                 {post.ai_status === 'flagged' && <AlertTriangle size={16} className="text-red-500 ml-1" />}
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1 truncate">@{post.users?.username}</span>
                 
-                {/* Web3 Trust Badges */}
-                <span className="ml-2 text-xs bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20 font-medium">
-                   Trust: {trustScore}
-                </span>
-                <span className="ml-1 text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full border border-blue-500/20 font-medium">
-                   {balance} SNTL
-                </span>
 
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
                 {post.location && (
@@ -239,13 +246,14 @@ export function PostCard({ post, isRepost }) {
                           >
                              <Copy size={16} /> Copy On-Chain Hash
                           </button>
-                          <button 
-                             onClick={handleReport} 
-                             className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                          >
-                             <AlertTriangle size={16} /> Report Post
-                          </button>
-                      </div>
+                           {post.image_moderation_status === 'blocked' ? null : (
+                               <button 
+                                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-zinc-800 transition flex items-center gap-2 font-bold"
+                                 onClick={handleReportClick} 
+                               >
+                                 <AlertTriangle size={16} /> Report Post
+                               </button>
+                           )}</div>
                   )}
               </div>
           </div>
@@ -360,8 +368,42 @@ export function PostCard({ post, isRepost }) {
           {showComments && <CommentSection postId={post.id} />}
         </div>
       </div>
+
+      {showReportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={24} />
+              Report Post
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Please provide a reason or comment for reporting this post to the moderation team.
+            </p>
+            <textarea
+              className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white mb-4 focus:ring-2 focus:ring-red-500 outline-none resize-none"
+              rows={4}
+              placeholder="E.g., This post contains spam or misleading information..."
+              value={reportComment}
+              onChange={(e) => setReportComment(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+                onClick={() => setShowReportModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-md"
+                onClick={submitReport}
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }
-
-

@@ -33,7 +33,14 @@ export const Web3Provider = ({ children }) => {
             
             setBalance(Number(ethers.formatEther(bal)));
             setTrustScore(Number(trust));
-            setHasClaimedAirdrop(claimed);
+            
+            const addressKey = userAddress.toLowerCase();
+            const localClaimed = localStorage.getItem(`claimed_${addressKey}`) === 'true';
+            
+            // If they have any tokens, they definitely already claimed the initial airdrop
+            const hasTokens = Number(ethers.formatEther(bal)) > 0;
+            
+            setHasClaimedAirdrop(claimed || localClaimed || hasTokens);
         } catch (err) {
             console.error("Failed to fetch user state:", err);
         }
@@ -113,10 +120,10 @@ export const Web3Provider = ({ children }) => {
             return;
         }
         setIsConnecting(true);
-        setClaimStatus("Processing Gasless Claim...");
+        setClaimStatus("Processing Gasless Airdrop...");
         setClaimTxHash(null);
         try {
-            const response = await fetch('http://localhost:8000/api/claim-tokens', {
+            const response = await fetch('http://localhost:8000/api/airdrop', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userAddress: account })
@@ -127,9 +134,11 @@ export const Web3Provider = ({ children }) => {
             if (data.success) {
                 setBalance(prev => prev + 500);
                 setHasClaimedAirdrop(true);
+                localStorage.setItem(`claimed_${account.toLowerCase()}`, 'true');
                 setTrustScore(100);
                 setClaimTxHash(data.txHash);
                 setClaimStatus("Success!");
+                alert("Airdrop Claimed successfully! You should see 500 SNTL in your wallet shortly.");
             } else {
                 throw new Error(data.details || data.error || "Transaction failed");
             }

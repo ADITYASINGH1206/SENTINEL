@@ -1,4 +1,6 @@
 import { createReport } from '../services/moderationService.js';
+import { supabase } from '../supabaseClient.js';
+import { addReportedContent } from '../routes/relayer.js';
 
 export const submitReport = async (req, res) => {
     try {
@@ -18,6 +20,16 @@ export const submitReport = async (req, res) => {
         createReport(target_type, target_id, reason, reporterId).catch(err => {
             console.error('[Report Submission Error]', err.message);
         });
+        
+        // Link with Verification Hub (Hackathon Demo logic)
+        if (target_type === 'post') {
+            const { data: postData } = await supabase.from('posts').select('content, user_id').eq('id', target_id).single();
+            if (postData) {
+                const { data: userData } = await supabase.from('users').select('wallet_address').eq('id', postData.user_id).single();
+                const commentText = req.body.comment || reason;
+                addReportedContent(target_id, postData.content, userData?.wallet_address, commentText);
+            }
+        }
 
         res.status(201).json({ success: true, message: 'Report submitted successfully.' });
     } catch (err) {
