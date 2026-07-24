@@ -81,30 +81,8 @@ def convert_swinv2_deepfake():
     print(f"[SwinV2] Exported to {onnx_path}")
 
     # Step 4: Convert to FP16
-    print("[SwinV2] Converting to FP16...")
-    try:
-        import onnx
-        from onnx import numpy_helper
-        
-        onnx_model = onnx.load(onnx_path)
-        
-        # Convert float32 initializers to float16
-        from onnx import TensorProto
-        for initializer in onnx_model.graph.initializer:
-            if initializer.data_type == TensorProto.FLOAT:
-                arr = numpy_helper.to_array(initializer).astype(np.float16)
-                new_init = numpy_helper.from_array(arr, name=initializer.name)
-                new_init.data_type = TensorProto.FLOAT16
-                initializer.CopyFrom(new_init)
-        
-        fp16_path = os.path.join(output_dir, "model_fp16.onnx")
-        onnx.save(onnx_model, fp16_path)
-        
-        # Replace original with fp16
-        os.replace(fp16_path, onnx_path)
-        print(f"[SwinV2] FP16 conversion complete: {onnx_path}")
-    except Exception as e:
-        print(f"[SwinV2] WARNING: FP16 conversion failed ({e}), keeping FP32 model")
+    # Step 4: Keep FP32
+    print("[SwinV2] Keeping FP32 format for compatibility...")
 
     # Step 5: Verify
     print("[SwinV2] Verifying ONNX model...")
