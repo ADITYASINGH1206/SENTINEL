@@ -33,11 +33,9 @@ export default function PostDetail() {
 
   return (
     <div className="w-full min-h-screen">
-      <div className="sticky top-0 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 z-10 flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-800 rounded-full transition">
-           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <h1 className="text-xl font-bold">Post</h1>
+      <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10 flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition"><ArrowLeft size={20} className="text-gray-900 dark:text-white" /></button>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Post</h1>
       </div>
       
       <div className="border-b border-gray-800 bg-gray-900/50">

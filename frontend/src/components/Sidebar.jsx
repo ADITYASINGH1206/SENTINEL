@@ -18,8 +18,7 @@ export default function Sidebar() {
     { name: 'Messages', path: '/chat', icon: <Mail size={26} /> },
     { name: 'Bookmarks', path: '/bookmarks', icon: <Bookmark size={26} /> },
     { name: 'Verify', path: '/dashboard', icon: <ShieldCheck size={26} /> },
-    { name: 'Profile', path: '/profile', icon: <User size={26} /> },
-    { name: 'More', path: '#', icon: <CircleEllipsis size={26} /> }
+    { name: 'Profile', path: '/profile', icon: <User size={26} /> }
   ];
 
   return (

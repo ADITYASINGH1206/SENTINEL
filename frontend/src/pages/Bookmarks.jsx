@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../services/api';
 import { PostCard } from '../components/PostComponents';
 import { Bookmark, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Bookmarks() {
+    const { user } = useAuth();
     const [bookmarks, setBookmarks] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -27,9 +29,9 @@ export default function Bookmarks() {
 
     return (
         <div className="w-full min-h-screen bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white">
-            <div className="sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10 flex flex-col justify-center">
+            <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10 flex flex-col justify-center">
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">Bookmarks</h1>
-                <p className="text-sm text-gray-500">Saved posts</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">@{user?.user_metadata?.username || user?.email?.split('@')[0]}</p>
             </div>
 
             {loading ? (

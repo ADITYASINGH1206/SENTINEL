@@ -43,8 +43,8 @@ export default function TrendingPage() {
                 </div>
             </div>
             <div className="w-full md:w-2/3">
-                <div className="sticky top-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">High Engagement</h2>
+                <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">Trending on Sentinel</h1>
                 </div>
                 <div>
                     {posts.length === 0 ? <p className="p-8 text-gray-500 text-center">No posts yet.</p> : posts.map(p => <PostCard key={p.id} post={p} />)}

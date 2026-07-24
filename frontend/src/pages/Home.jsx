@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PostComposer from '../components/PostComposer';
 import { PostCard } from '../components/PostComponents';
 import { apiFetch } from '../services/api';
+import ThemeToggler from '../components/ThemeToggler';
 
 export default function Home() {
   const [posts, setPosts] = useState([]);
@@ -25,9 +26,10 @@ export default function Home() {
   return (
     <div className="w-full min-h-screen">
       {/* Sticky Header */}
-      <div className="sticky top-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 z-10 flex flex-col">
-        <div className="px-4 py-3 sm:hidden">
-            <span className="text-xl font-bold text-gray-900 dark:text-white">Home</span>
+      <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-10 flex flex-col">
+        <div className="px-4 py-3 flex justify-between items-center sm:hidden">
+            <span className="text-xl font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Home</span>
+            <ThemeToggler />
         </div>
         <div className="flex w-full">
             <button 

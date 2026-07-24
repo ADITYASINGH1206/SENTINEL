@@ -31,19 +31,11 @@ export default function Explore() {
   return (
     <div className="w-full min-h-screen pb-20">
       {/* Sticky Header */}
-      <div className="sticky top-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 p-3 z-10 flex items-center gap-2">
-         <div className="relative group flex-grow">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none pb-0">
-                <Search size={18} className="text-gray-500 group-focus-within:text-blue-500" />
-            </div>
-            <input 
-                type="text" 
-                placeholder="Search Explore" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-100 dark:bg-zinc-900 text-gray-900 dark:text-white rounded-full py-2.5 pl-12 pr-4 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-black border border-transparent focus:border-blue-500 transition-colors"
-            />
-         </div>
+      <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-3 z-10 flex items-center gap-2">
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-full flex-1 flex items-center px-4 py-2 border border-transparent focus-within:border-blue-500 transition-colors">
+              <Search size={18} className="text-gray-500 mr-2" />
+              <input type="text" placeholder="Search accounts or posts..." className="bg-transparent outline-none w-full text-sm text-gray-900 dark:text-white" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
          <button onClick={() => fetchNews(true)} disabled={loading} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-800 transition disabled:opacity-50 text-gray-700 dark:text-gray-300">
              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
          </button>
