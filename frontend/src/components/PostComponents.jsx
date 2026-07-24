@@ -41,20 +41,20 @@ export function CommentSection({ postId }) {
     };
 
     return (
-        <div className="mt-4 border-t border-gray-800 pt-4 px-2">
-            {comments.length === 0 && <p className="text-sm text-gray-500">No comments yet.</p>}
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4 px-2">
+            {comments.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet.</p>}
             {comments.map(c => (
                 <div key={c.id} className="mb-3 flex gap-3">
-                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
+                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full" />
                     <div>
-                        <span className="font-bold text-sm">{c.users?.display_name || c.users?.username}</span>
-                        <p className="text-gray-300 text-sm">{c.content}</p>
+                        <span className="font-bold text-sm text-gray-900 dark:text-white">{c.users?.display_name || c.users?.username}</span>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">{c.content}</p>
                     </div>
                 </div>
             ))}
             <div className="flex gap-2 mt-3">
-                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-800 p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent" />
-                <button onClick={handleAddComment} className="bg-blue-500 px-4 rounded-full text-sm font-bold">Reply</button>
+                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent dark:border-transparent dark:focus:border-blue-500 placeholder-gray-500 dark:placeholder-gray-400" />
+                <button onClick={handleAddComment} className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-full text-sm font-bold transition">Reply</button>
             </div>
         </div>
     );
