@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PostCard, CommentSection } from '../components/PostComponents';
 import { apiFetch } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
 export default function PostDetail() {
   const { id } = useParams();
