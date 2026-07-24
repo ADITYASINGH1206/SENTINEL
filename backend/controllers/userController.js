@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 export const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { bio, wallet_address, cover_url } = req.body;
+        const { display_name, bio, location, website, wallet_address, cover_url } = req.body;
         let { avatar_url } = req.body;
         
         if (req.file) {
@@ -29,7 +29,7 @@ export const updateProfile = async (req, res) => {
         
         const { data, error } = await supabase
             .from('users')
-            .update({ bio, wallet_address, avatar_url, cover_url })
+            .update({ display_name, bio, location, website, wallet_address, avatar_url, cover_url })
             .eq('id', userId)
             .select()
             .single();

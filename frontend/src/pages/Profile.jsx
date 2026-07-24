@@ -21,7 +21,7 @@ export default function Profile() {
   const [isFollowing, setIsFollowing] = useState(false);
   
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ bio: '', avatar_url: '', cover_url: '', wallet_address: '' });
+  const [editForm, setEditForm] = useState({ display_name: '', bio: '', location: '', website: '', avatar_url: '', cover_url: '', wallet_address: '' });
   const [avatarFile, setAvatarFile] = useState(null);
 
   // Social Modal State
@@ -93,7 +93,10 @@ export default function Profile() {
   const handleEditSave = async () => {
       try {
           const formData = new FormData();
+          formData.append('display_name', editForm.display_name || '');
           formData.append('bio', editForm.bio || '');
+          formData.append('location', editForm.location || '');
+          formData.append('website', editForm.website || '');
           formData.append('wallet_address', editForm.wallet_address || '');
           formData.append('cover_url', editForm.cover_url || '');
           if (avatarFile) {
@@ -128,21 +131,31 @@ export default function Profile() {
 
   return (
     <div className="w-full min-h-screen">
-      <div className="sticky top-0 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 z-10 flex justify-between items-center">
-        <h1 className="text-xl font-bold">{profileUser.display_name || profileUser.username}</h1>
+      <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{profileUser.display_name || profileUser.username}</h1>
       </div>
       
       {/* Sleek Profile Header */}
-      <div className="relative border-b border-gray-800 pb-4">
-         <div className="h-48 w-full bg-gray-800">
+      <div className="relative border-b border-gray-200 dark:border-gray-800 pb-4">
+         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-slate-800 dark:to-slate-900 h-36 md:h-48 w-full">
              {profileUser.cover_url && <img src={profileUser.cover_url} className="w-full h-full object-cover" alt="Cover" />}
          </div>
          
          <div className="px-4 flex justify-between items-start">
-             <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username; }} alt="Avatar" className="w-32 h-32 bg-gray-900 rounded-full border-4 border-gray-900 -mt-16 relative" />
+             <img src={profileUser.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + profileUser.username; }} alt="Avatar" className="w-32 h-32 bg-white dark:bg-slate-800 rounded-full border-4 border-white dark:border-[#0d1117] -mt-16 relative" />
              <div className="mt-4">
                  {isOwnProfile ? (
-                     <button onClick={() => { setEditForm(profileUser); setShowEditModal(true); }} className="px-4 py-1.5 rounded-full font-semibold border transition-colors border-gray-300 bg-white text-gray-900 hover:bg-gray-100 dark:border-gray-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800">Edit Profile</button>
+                     <button onClick={() => { setEditForm({
+                          display_name: profileUser.display_name || '',
+                          bio: profileUser.bio || '',
+                          location: profileUser.location || '',
+                          website: profileUser.website || '',
+                          wallet_address: profileUser.wallet_address || '',
+                          cover_url: profileUser.cover_url || '',
+                          avatar_url: profileUser.avatar_url || ''
+                     }); setShowEditModal(true); }} className="px-4 py-1.5 rounded-full font-semibold border transition-all duration-150 shadow-sm border-gray-300 bg-white text-gray-900 hover:bg-gray-100 active:scale-95 dark:border-gray-700 dark:bg-transparent dark:text-white dark:hover:bg-zinc-800">
+                        Edit Profile
+                     </button>
                  ) : (
                      <button onClick={handleFollowToggle} className={`${isFollowing ? 'border border-gray-300 dark:border-gray-600 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 text-gray-900 dark:text-white' : 'border border-gray-300 bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200'} font-bold py-2 px-6 rounded-full transition-colors`}>
                          {isFollowing ? 'Following' : 'Follow'}
@@ -152,17 +165,22 @@ export default function Profile() {
          </div>
          
          <div className="px-4 mt-2">
-             <h2 className="text-2xl font-bold">{profileUser.display_name || profileUser.username}</h2>
+             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{profileUser.display_name || profileUser.username}</h2>
              <p className="text-gray-500 mb-2">@{profileUser.username}</p>
-             {profileUser.bio && <p className="mb-3">{profileUser.bio}</p>}
+             {profileUser.bio && <p className="mb-3 text-gray-800 dark:text-gray-200">{profileUser.bio}</p>}
              
+             <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                 {profileUser.location && <span>📍 {profileUser.location}</span>}
+                 {profileUser.website && <span>🔗 <a href={profileUser.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{profileUser.website.replace(/^https?:\/\//, '')}</a></span>}
+             </div>
+
              {profileUser.wallet_address && (
-                 <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
+                 <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm mb-3">
                      <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{profileUser.wallet_address.slice(0,6)}...{profileUser.wallet_address.slice(-4)}</span>
                  </div>
              )}
              
-             <div className="flex gap-4 text-sm text-gray-500">
+             <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400">
                  <span onClick={() => openSocialModal('following')} className="cursor-pointer hover:underline"><strong className="text-gray-900 dark:text-white">{socialCounts.following}</strong> Following</span>
                  <span onClick={() => openSocialModal('followers')} className="cursor-pointer hover:underline"><strong className="text-gray-900 dark:text-white">{socialCounts.followers}</strong> Followers</span>
              </div>
@@ -183,20 +201,38 @@ export default function Profile() {
       </div>
 
       {showEditModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-              <div className="bg-gray-900 p-6 rounded-xl w-full max-w-lg shadow-2xl border border-gray-700">
-                  <h3 className="text-xl font-bold mb-4">Edit Profile</h3>
-                  <div className="space-y-4">
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+              <div className="bg-white dark:bg-[#161b22] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white my-8">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold">Edit Profile</h3>
+                      <button onClick={()=>setShowEditModal(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"><X size={20} /></button>
+                  </div>
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                       <div>
-                          <label className="text-sm text-gray-400">Bio</label>
-                          <textarea className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent" value={editForm.bio || ''} onChange={e=>setEditForm({...editForm, bio: e.target.value})} />
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Display Name</label>
+                          <input type="text" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm" value={editForm.display_name || ''} onChange={e=>setEditForm({...editForm, display_name: e.target.value})} placeholder="Add a name" />
                       </div>
                       <div>
-                          <label className="text-sm text-gray-400">Wallet Address</label>
-                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent font-mono text-sm" value={editForm.wallet_address || ''} onChange={e=>setEditForm({...editForm, wallet_address: e.target.value})} />
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bio</label>
+                          <textarea className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm resize-none h-24" maxLength={160} value={editForm.bio || ''} onChange={e=>setEditForm({...editForm, bio: e.target.value})} placeholder="Tell us about yourself..." />
+                          <div className="text-right text-xs text-gray-500 mt-1">{editForm.bio?.length || 0} / 160</div>
+                      </div>
+                      <div className="flex gap-4">
+                          <div className="flex-1">
+                              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Location</label>
+                              <input type="text" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm" value={editForm.location || ''} onChange={e=>setEditForm({...editForm, location: e.target.value})} placeholder="City, Country" />
+                          </div>
+                          <div className="flex-1">
+                              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Website</label>
+                              <input type="url" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm" value={editForm.website || ''} onChange={e=>setEditForm({...editForm, website: e.target.value})} placeholder="https://" />
+                          </div>
                       </div>
                       <div>
-                          <label className="text-sm text-gray-400 mb-2 block">Select Avatar</label>
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Wallet Address</label>
+                          <input type="text" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 font-mono text-sm" value={editForm.wallet_address || ''} onChange={e=>setEditForm({...editForm, wallet_address: e.target.value})} placeholder="0x..." />
+                      </div>
+                      <div>
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Select Avatar</label>
                           <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                               {['Felix', 'Aneka', 'Oliver', 'Jude', 'Leo', 'Molly', 'Coco', 'Oscar', 'Jasper', 'Bandit', 'Lily', 'Mia', 'Chloe', 'Zoe', 'Sophia', 'Ava', 'Isabella', 'Emma', 'Avery', 'Riley', 'Aria'].map(seed => {
                                   const url = `https://api.dicebear.com/7.x/micah/svg?seed=${seed}`;
@@ -207,26 +243,26 @@ export default function Profile() {
                                           src={url} 
                                           alt={seed}
                                           onClick={() => { setEditForm({...editForm, avatar_url: url}); setAvatarFile(null); }}
-                                          className={`w-14 h-14 rounded-full cursor-pointer transition-all flex-shrink-0 border-2 ${isSelected ? 'border-blue-500 bg-gray-800 scale-110 shadow-lg shadow-blue-500/20' : 'border-transparent hover:bg-gray-800 hover:scale-105 bg-gray-900/50'}`}
+                                          className={`w-14 h-14 rounded-full cursor-pointer transition-all flex-shrink-0 border-2 ${isSelected ? 'border-blue-500 bg-gray-100 dark:bg-gray-800 scale-110 shadow-lg shadow-blue-500/20' : 'border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105 bg-gray-50 dark:bg-gray-900/50'}`}
                                       />
                                   );
                               })}
                           </div>
                           
-                          <label className="text-sm text-gray-400 mt-4 block">Or Upload Your Own Photo</label>
-                          <input type="file" accept="image/*" onChange={(e) => { if(e.target.files[0]) { setAvatarFile(e.target.files[0]); setEditForm({...editForm, avatar_url: ''}); } }} className="w-full bg-gray-800 p-2 rounded mt-1 outline-none text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20" />
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-4 block">Or Upload Your Own Photo</label>
+                          <input type="file" accept="image/*" onChange={(e) => { if(e.target.files[0]) { setAvatarFile(e.target.files[0]); setEditForm({...editForm, avatar_url: ''}); } }} className="w-full bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg mt-1 outline-none text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 dark:file:bg-blue-500/10 dark:file:text-blue-400 hover:file:bg-blue-200 dark:hover:file:bg-blue-500/20" />
 
-                          <label className="text-sm text-gray-400 mt-4 block">Or Paste Image URL</label>
-                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.avatar_url || ''} onChange={e=>{ setEditForm({...editForm, avatar_url: e.target.value}); setAvatarFile(null); }} placeholder="https://..." />
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-4 block">Or Paste Image URL</label>
+                          <input type="text" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm" value={editForm.avatar_url || ''} onChange={e=>{ setEditForm({...editForm, avatar_url: e.target.value}); setAvatarFile(null); }} placeholder="https://..." />
                       </div>
                       <div>
-                          <label className="text-sm text-gray-400">Cover Image URL</label>
-                          <input type="text" className="w-full bg-gray-800 p-2 rounded mt-1 outline-none focus:border-blue-500 border border-transparent text-sm" value={editForm.cover_url || ''} onChange={e=>setEditForm({...editForm, cover_url: e.target.value})} />
+                          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cover Image URL</label>
+                          <input type="text" className="w-full bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 dark:border-gray-700 text-sm" value={editForm.cover_url || ''} onChange={e=>setEditForm({...editForm, cover_url: e.target.value})} placeholder="https://" />
                       </div>
                   </div>
-                  <div className="flex gap-3 mt-6">
-                      <button onClick={()=>setShowEditModal(false)} className="flex-1 border border-gray-600 hover:bg-gray-800 font-bold py-2 rounded transition">Cancel</button>
-                      <button onClick={handleEditSave} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-2 rounded transition">Save</button>
+                  <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800 justify-end">
+                      <button onClick={()=>setShowEditModal(false)} className="text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-zinc-800 px-4 py-2 rounded-full font-semibold transition">Cancel</button>
+                      <button onClick={handleEditSave} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-semibold shadow-md transition">Save</button>
                   </div>
               </div>
           </div>
