@@ -22,12 +22,13 @@ Follow these instructions to run the full-stack environment locally for testing.
 2. [MetaMask](https://metamask.io/) browser extension installed.
 
 ### 1. Environment Variables
-Your teammate will provide you with a `.env` file. 
-- Place the provided `.env` file directly into the `/backend` directory. 
-- It contains the `RPC_URL`, `RELAYER_PRIVATE_KEY`, and `CONTRACT_ADDRESS` needed for the backend to execute on-chain transactions.
+Your teammate will provide you with `.env` files or you can use the `.env.example` templates.
+- **Backend**: Place the provided `.env` file directly into the `/backend` directory. It contains the `RPC_URL`, `RELAYER_PRIVATE_KEY`, and `CONTRACT_ADDRESS` needed for on-chain transactions.
+- **AI Orchestrator**: Add `GOOGLE_API_KEY`, `GROQ_API_KEY`, and `OPENAI_API_KEY` to `/ai-orchestrator/.env`.
+- **Moderation Service**: Add `HF_TOKEN` (Hugging Face token) to `/moderation_service/.env` for downloading gated models like NudeNet and SwinV2.
 
 ### 2. Install Dependencies
-Open three terminal windows.
+Open four terminal windows.
 
 **Terminal 1 (Backend - Node.js):**
 ```bash
@@ -44,39 +45,66 @@ npm install
 **Terminal 3 (AI Orchestrator - Python):**
 ```bash
 cd ai-orchestrator
+python -m venv venv
+source venv/Scripts/activate
+
 pip install -r requirements.txt
 # Requires GOOGLE_API_KEY, GROQ_API_KEY, OPENAI_API_KEY in .env
 ```
 
+**Terminal 4 (Moderation Service - Python):**
+```bash
+cd moderation_service
+python -m venv venv
+source venv/Scripts/activate
+
+pip install -r requirements.txt
+# Note: First run will download ~2GB of ML models (SwinV2, NudeNet). Ensure HF_TOKEN is in .env.
+```
+
 ### 3. Run the Development Servers
 
-Start all three servers simultaneously in their respective terminals:
+Start all four servers simultaneously in their respective terminals:
 
 **Backend:**
 ```bash
+cd backend
 npm run dev
 # Expected output: 🚀 Sentinel Node.js Backend running on port 8000
 ```
 
 **Frontend:**
 ```bash
+cd frontend
 npm run dev
 # Expected output: ➜  Local: http://localhost:5173/
 ```
 
+**Moderation Service:**
+```bash
+cd moderation_service
+source venv/Scripts/activate
+
+python app.py
+# Expected output: INFO:     Uvicorn running on http://0.0.0.0:8002
+```
+
 **AI Orchestrator:**
 ```bash
-python -m uvicorn app:app --port 5000 --reload
+cd ai-orchestrator
+source venv/Scripts/activate
+
+uvicorn app:app --host 0.0.0.0 --port 5000 --reload
 # Expected output: Uvicorn running on http://0.0.0.0:5000
 ```
 
 ### 4. How to Close the Project
 
-To safely shut down the servers, navigate to each of the three terminal windows you opened and press:
+To safely shut down the servers, navigate to each of the four terminal windows you opened and press:
 
 **`Ctrl + C`** (Windows/Linux) or **`Cmd + C`** (Mac)
 
-If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all three terminals, the entire project will be closed.
+If you are prompted with `Terminate batch job (Y/N)?` on Windows, simply type `Y` and press Enter. Once you have done this in all four terminals, the entire project will be closed.
 
 ---
 
@@ -88,6 +116,17 @@ The platform features a **3-tier LangChain Fallback Hierarchy** (Gemini 2.0 Flas
 3. **Domain Classification:** Categorizes the text by topic (e.g., Politics, Tech).
 
 The backend automatically routes text posts to this engine and renders the resulting scores and tags seamlessly in the frontend UI.
+
+---
+
+## 👁️ Visual Moderation & Deepfake Engine (Moderation Service)
+
+The platform features a multi-stage image analysis pipeline that processes visual content in a single pass:
+1. **NSFW Detection:** Uses **NudeNet** to identify and block explicit content before further processing.
+2. **C2PA Provenance:** Scans for embedded Content Credentials (C2PA manifests) to detect cryptographically disclosed AI generation.
+3. **Deepfake & AI Generation Detection:** Employs a **SwinV2 Transformer** (converted to ONNX FP16 for CPU efficiency) for whole-image classification, flagging deepfakes and AI-generated imagery without relying on face detection.
+
+This service operates sequentially for early exits and uses ONNX Runtime to provide extremely fast inference.
 
 ---
 

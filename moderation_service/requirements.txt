@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+httpx
+onnxruntime
+nudenet
+opencv-python-headless
+c2pa-python
+numpy
+Pillow
+supabase

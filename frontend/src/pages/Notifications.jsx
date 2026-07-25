@@ -49,8 +49,8 @@ export default function Notifications() {
 
     return (
         <div className="w-full min-h-screen">
-            <div className="sticky top-0 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 z-10">
-                <h1 className="text-xl font-bold">Notifications</h1>
+            <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h1>
             </div>
             {loading ? (
                 <div className="p-4 flex flex-col gap-4">
@@ -65,7 +65,7 @@ export default function Notifications() {
                             <div className="w-10 flex justify-end pt-1">{getIcon(n.type)}</div>
                             <div className="flex-grow">
                                 {n.notifier && (
-                                    <img src={n.notifier.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + n.notifier.username} className="w-8 h-8 rounded-full mb-2 bg-gray-700" alt="avatar" />
+                                    <img src={n.notifier.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + n.notifier.username} className="w-8 h-8 rounded-full mb-2 bg-gray-700" alt="avatar" />
                                 )}
                                 <p className="text-[15px]">{getMessage(n)}</p>
                             </div>

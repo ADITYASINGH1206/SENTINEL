@@ -5,6 +5,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Automatically upsert Google OAuth user into public.users
@@ -18,16 +19,19 @@ export function AuthProvider({ children }) {
 
       try {
           // Check if user exists
-          const { data, error } = await supabase.from('users').select('id').eq('id', id).single();
+          const { data, error } = await supabase.from('users').select('*').eq('id', id).single();
           
           if (error && error.code === 'PGRST116') {
               // User doesn't exist, insert them
-              await supabase.from('users').insert({
+              const { data: newUser } = await supabase.from('users').insert({
                   id: id,
                   username: username,
                   display_name: displayName,
                   avatar_url: avatarUrl
-              });
+              }).select().single();
+              setDbUser(newUser);
+          } else {
+              setDbUser(data);
           }
       } catch (err) {
           console.error("Error upserting public user", err);
@@ -37,8 +41,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) upsertPublicUser(session.user);
-      setLoading(false);
+      if (session?.user) {
+          upsertPublicUser(session.user).then(() => setLoading(false));
+      } else {
+          setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -73,7 +80,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, dbUser, setDbUser, login, loginWithGoogle, register, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

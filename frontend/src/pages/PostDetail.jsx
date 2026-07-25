@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PostCard, CommentSection } from '../components/PostComponents';
 import { apiFetch } from '../services/api';
+import { ArrowLeft } from 'lucide-react';
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -33,75 +34,75 @@ export default function PostDetail() {
 
   return (
     <div className="w-full min-h-screen">
-      <div className="sticky top-0 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 z-10 flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-800 rounded-full transition">
-           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <h1 className="text-xl font-bold">Post</h1>
+      <div className="sticky top-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 z-10 flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition"><ArrowLeft size={20} className="text-gray-900 dark:text-white" /></button>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Post</h1>
       </div>
       
-      <div className="border-b border-gray-800 bg-gray-900/50">
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-transparent">
           <PostCard post={post} />
       </div>
 
       {/* Dedicated AI Analysis Section */}
-      <div className="p-6 border-b border-gray-800 bg-gray-800/30">
-          <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                 <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                 Orchestrator Analysis
-              </h3>
+      {post.content && post.content.trim().length > 0 && (
+          <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-blue-50/50 dark:bg-gray-800/30">
+              <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                     <svg className="w-5 h-5 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                     Orchestrator Analysis
+                  </h3>
+                  
+                  {/* Domain Tags */}
+                  <div className="flex flex-wrap gap-2 justify-end">
+                      {post.domain_topic && (
+                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/50">
+                              #{post.domain_topic}
+                          </span>
+                      )}
+                      {post.sub_topics && post.sub_topics.map((t, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full border border-gray-300 dark:border-gray-600">
+                              #{t}
+                          </span>
+                      ))}
+                      {post.flagged_categories && post.flagged_categories.map((tag, idx) => (
+                          <span key={`flag-${idx}`} className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/50 flex items-center gap-1">
+                              ⚠️ {tag}
+                          </span>
+                      ))}
+                  </div>
+              </div>
               
-              {/* Domain Tags */}
-              <div className="flex flex-wrap gap-2 justify-end">
-                  {post.domain_topic && (
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/50">
-                          #{post.domain_topic}
-                      </span>
-                  )}
-                  {post.sub_topics && post.sub_topics.map((t, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-full border border-gray-600">
-                          #{t}
-                      </span>
-                  ))}
-                  {post.flagged_categories && post.flagged_categories.map((tag, idx) => (
-                      <span key={`flag-${idx}`} className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/50 flex items-center gap-1">
-                          ⚠️ {tag}
-                      </span>
-                  ))}
+              <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                 <div className="flex justify-between items-center mb-4">
+                     <span className="text-gray-500 dark:text-gray-400">Status:</span>
+                     <span className="font-bold text-green-500 dark:text-green-400">{post.ai_status.toUpperCase()}</span>
+                 </div>
+                 
+                 {/* Dynamic Metric Bar */}
+                 <div className="grid grid-cols-3 gap-4 mb-4">
+                     <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center border border-gray-100 dark:border-gray-700">
+                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Probability</p>
+                         <p className="text-lg font-bold text-gray-900 dark:text-white">{post.ai_confidence ?? 0}%</p>
+                     </div>
+                     <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center border border-gray-100 dark:border-gray-700">
+                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Risk Score</p>
+                         <p className="text-lg font-bold text-gray-900 dark:text-white">{post.risk_score ?? 0}%</p>
+                     </div>
+                     <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center border border-gray-100 dark:border-gray-700">
+                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Primary Domain</p>
+                         <p className="text-lg font-bold capitalize text-gray-900 dark:text-white">{post.domain_topic || 'General'}</p>
+                     </div>
+                 </div>
+                 
+                 <p className="text-sm italic text-gray-600 dark:text-gray-400 line-clamp-3 overflow-hidden mt-4">
+                     {post.analysis_summary || "No detailed analysis available."}
+                 </p>
               </div>
           </div>
-          
-          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-             <div className="flex justify-between items-center mb-4">
-                 <span className="text-gray-400">Status:</span>
-                 <span className="font-bold text-green-400">{post.ai_status.toUpperCase()}</span>
-             </div>
-             
-             {/* Dynamic Metric Bar */}
-             <div className="grid grid-cols-3 gap-4 mb-4">
-                 <div className="bg-gray-800 p-2 rounded text-center">
-                     <p className="text-xs text-gray-400 uppercase tracking-wider">AI Probability</p>
-                     <p className="text-lg font-bold">{post.ai_confidence ?? 0}%</p>
-                 </div>
-                 <div className="bg-gray-800 p-2 rounded text-center">
-                     <p className="text-xs text-gray-400 uppercase tracking-wider">Risk Score</p>
-                     <p className="text-lg font-bold">{post.risk_score ?? 0}%</p>
-                 </div>
-                 <div className="bg-gray-800 p-2 rounded text-center">
-                     <p className="text-xs text-gray-400 uppercase tracking-wider">Primary Domain</p>
-                     <p className="text-lg font-bold capitalize">{post.domain_topic || 'General'}</p>
-                 </div>
-             </div>
-             
-             <p className="text-sm text-gray-400 italic mt-4">
-                 {post.analysis_summary || "No detailed analysis available."}
-             </p>
-          </div>
-      </div>
+      )}
 
-      <div className="p-4">
-          <h2 className="font-bold text-lg mb-4">Comments</h2>
+      <div className="p-4 bg-white dark:bg-transparent">
+          <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Comments</h2>
           <CommentSection postId={post.id} />
       </div>
     </div>

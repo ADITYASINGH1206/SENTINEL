@@ -76,6 +76,7 @@ Sub-topics should be specific and descriptive (e.g., "machine learning", "climat
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GENERAL RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- CONCISENESS RULE: Never generate long explanations or paragraphs. All text summaries, explanations, and reasonings MUST be ultra-concise, direct, and strictly limited to a maximum of 3 lines (or 2-3 short sentences). Do not repeat the prompt or use fluff words.
 - Be precise and conservative. Do NOT over-flag.
 - Each task is independent — do not let one influence another.
 - If the text is too short for reliable analysis (< 10 words), set ai_detection \

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload } from 'lucide-react';
+import { Heart, MessageCircle, Share, Eye, BarChart2, CircleEllipsis, Bookmark, Upload, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import VerifiedBadge from './VerifiedBadge';
 import useIntersectionObserver from '../hooks/useIntersectionObserver';
 import { Web3Context } from '../context/Web3Context';
-import { ShieldCheck, AlertTriangle, Copy } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Copy, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export function CommentSection({ postId }) {
@@ -41,20 +41,20 @@ export function CommentSection({ postId }) {
     };
 
     return (
-        <div className="mt-4 border-t border-gray-800 pt-4 px-2">
-            {comments.length === 0 && <p className="text-sm text-gray-500">No comments yet.</p>}
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4 px-2">
+            {comments.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No comments yet.</p>}
             {comments.map(c => (
                 <div key={c.id} className="mb-3 flex gap-3">
-                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + c.users?.username} alt="Avatar" className="w-8 h-8 bg-gray-600 rounded-full" />
+                    <img src={c.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + c.users?.username; }} alt="Avatar" className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full" />
                     <div>
-                        <span className="font-bold text-sm">{c.users?.display_name || c.users?.username}</span>
-                        <p className="text-gray-300 text-sm">{c.content}</p>
+                        <span className="font-bold text-sm text-gray-900 dark:text-white">{c.users?.display_name || c.users?.username}</span>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">{c.content}</p>
                     </div>
                 </div>
             ))}
             <div className="flex gap-2 mt-3">
-                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-800 p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent" />
-                <button onClick={handleAddComment} className="bg-blue-500 px-4 rounded-full text-sm font-bold">Reply</button>
+                <input type="text" value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Post your reply" className="flex-grow bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded-full outline-none px-4 text-sm focus:border-blue-500 border border-transparent dark:border-transparent dark:focus:border-blue-500 placeholder-gray-500 dark:placeholder-gray-400" />
+                <button onClick={handleAddComment} className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-full text-sm font-bold transition">Reply</button>
             </div>
         </div>
     );
@@ -80,6 +80,16 @@ export function PostCard({ post, isRepost }) {
   const [hasTracked, setHasTracked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showSensitive, setShowSensitive] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked || false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportComment, setReportComment] = useState("");
+
+  const hasIndexTags = post.image_labels?.some(l => l.startsWith('sensitive_index_'));
+  const isCurrentSensitive = hasIndexTags 
+       ? post.image_labels?.includes(`sensitive_index_${currentImageIndex}`)
+       : post.image_labels?.some(l => ['18+', 'sensitive_content', 'too_revealing', 'explicit_content'].includes(l));
 
   const [targetRef, isIntersecting] = useIntersectionObserver({ threshold: 0.5 });
 
@@ -126,6 +136,19 @@ export function PostCard({ post, isRepost }) {
       }
   };
 
+  const handleBookmark = async () => {
+      setIsBookmarked(!isBookmarked);
+      try {
+          const res = await apiFetch(`/api/v1/bookmarks/toggle/${post.id}`, { method: 'POST' });
+          if (res.success) {
+              setIsBookmarked(res.bookmarked);
+          }
+      } catch (err) {
+          setIsBookmarked(!isBookmarked);
+          toast.error("Failed to bookmark post");
+      }
+  };
+
   const badgeStyles = {
       pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
       verified: 'bg-green-500/20 text-green-400 border-green-500/50',
@@ -148,7 +171,37 @@ export function PostCard({ post, isRepost }) {
       }
   };
 
+  const handleReportClick = () => {
+      setShowMenu(false);
+      setShowReportModal(true);
+  };
+
+  const submitReport = async () => {
+      if (!reportComment.trim()) {
+          toast.error("Please enter a reason.");
+          return;
+      }
+      try {
+          await apiFetch(`/api/v1/reports`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  target_type: 'post',
+                  target_id: post.id,
+                  reason: 'misleading',
+                  comment: reportComment
+              })
+          });
+          toast.success("Post reported for moderation.");
+          setShowReportModal(false);
+          setReportComment("");
+      } catch (err) {
+          toast.error("Failed to report post.");
+      }
+  };
+
   return (
+    <>
     <div ref={targetRef} className="border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
       {isRepost && (
           <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mb-2 ml-10 font-bold">
@@ -157,7 +210,7 @@ export function PostCard({ post, isRepost }) {
       )}
       <div className="flex gap-4">
         <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
-            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + post.users?.username} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
+            <img src={post.users?.avatar_url || "https://api.dicebear.com/7.x/micah/svg?seed=" + post.users?.username} onError={(e) => { e.target.onerror = null; e.target.src = "https://api.dicebear.com/7.x/micah/svg?seed=" + post.users?.username; }} alt="Avatar" className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full hover:opacity-80 transition" />
         </Link>
         <div className="flex-grow min-w-0">
           <div className="flex items-center justify-between mb-1">
@@ -167,15 +220,14 @@ export function PostCard({ post, isRepost }) {
                 {post.ai_status === 'flagged' && <AlertTriangle size={16} className="text-red-500 ml-1" />}
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1 truncate">@{post.users?.username}</span>
                 
-                {/* Web3 Trust Badges */}
-                <span className="ml-2 text-xs bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20 font-medium">
-                   Trust: {trustScore}
-                </span>
-                <span className="ml-1 text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full border border-blue-500/20 font-medium">
-                   {balance} SNTL
-                </span>
 
                 <span className="text-gray-500 dark:text-gray-400 text-[15px] ml-1">· {new Date(post.created_at).toLocaleDateString()}</span>
+                {post.location && (
+                  <span className="flex items-center gap-1 text-xs text-blue-500 font-medium ml-2 border border-blue-500/30 rounded-full px-2 py-0.5 bg-blue-500/10">
+                    <MapPin className="w-3 h-3"/>
+                    {post.location}
+                  </span>
+                )}
                 {user?.id !== post.user_id && (
                     <button onClick={handleFollow} className={`ml-2 text-xs font-bold px-3 py-1 rounded-full transition-colors ${isFollowing ? 'border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400' : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200'}`}>
                         {isFollowing ? 'Following' : 'Follow'}
@@ -194,22 +246,98 @@ export function PostCard({ post, isRepost }) {
                           >
                              <Copy size={16} /> Copy On-Chain Hash
                           </button>
-                      </div>
+                           {post.image_moderation_status === 'blocked' ? null : (
+                               <button 
+                                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-zinc-800 transition flex items-center gap-2 font-bold"
+                                 onClick={handleReportClick} 
+                               >
+                                 <AlertTriangle size={16} /> Report Post
+                               </button>
+                           )}</div>
                   )}
               </div>
           </div>
           <Link to={`/post/${post.id}`}>
              <p className="mb-3 text-[15px] text-gray-900 dark:text-white">{post.content}</p>
           </Link>
-          {post.media_url && (
-              <div className="mb-3 w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
-                 <img src={post.media_url} className="object-cover w-full h-full" alt="Post Media" />
+          {((post.media_urls && post.media_urls.length > 0) || post.media_url) && (
+              <div className="block mb-3 w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 relative group">
+                 {(post.media_urls && post.media_urls.length > 0) ? (
+                    <Link to={`/post/${post.id}`} className="relative block overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center">
+                        <img src={post.media_urls[currentImageIndex]} className={`w-full object-cover ${post.media_urls.length > 1 ? 'h-[500px]' : 'h-auto max-h-[70vh] object-contain'} ${isCurrentSensitive && !showSensitive ? 'blur-[40px] scale-110 brightness-75' : ''}`} alt="Post Media" />
+                        {isCurrentSensitive && !showSensitive && (
+                            <div className="absolute inset-0 flex flex-col bg-black/30 text-white z-10 p-6 text-center backdrop-blur-md cursor-pointer" onClick={(e) => { e.preventDefault(); setShowSensitive(true); }}>
+                                <div className="flex-1 flex flex-col items-center justify-center">
+                                    <EyeOff size={42} className="mb-4 text-white opacity-90" strokeWidth={1} />
+                                    <span className="font-bold text-[17px] mb-2">Sensitive Content</span>
+                                    <span className="text-[14px] leading-tight font-medium opacity-90 max-w-[280px]">This photo contains sensitive content which some people may find offensive or disturbing</span>
+                                </div>
+                                <div className="w-full pt-4 border-t border-white/30 pb-2">
+                                    <span className="font-bold text-[14px]">See Photo</span>
+                                </div>
+                            </div>
+                        )}
+                    </Link>
+                 ) : (
+                    <Link to={`/post/${post.id}`} className="relative block overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center">
+                        <img src={post.media_url} className={`w-full h-auto max-h-[70vh] object-contain ${isCurrentSensitive && !showSensitive ? 'blur-[40px] scale-110 brightness-75' : ''}`} alt="Post Media" />
+                        {isCurrentSensitive && !showSensitive && (
+                            <div className="absolute inset-0 flex flex-col bg-black/30 text-white z-10 p-6 text-center backdrop-blur-md cursor-pointer" onClick={(e) => { e.preventDefault(); setShowSensitive(true); }}>
+                                <div className="flex-1 flex flex-col items-center justify-center">
+                                    <EyeOff size={42} className="mb-4 text-white opacity-90" strokeWidth={1} />
+                                    <span className="font-bold text-[17px] mb-2">Sensitive Content</span>
+                                    <span className="text-[14px] leading-tight font-medium opacity-90 max-w-[280px]">This photo contains sensitive content which some people may find offensive or disturbing</span>
+                                </div>
+                                <div className="w-full pt-4 border-t border-white/30 pb-2">
+                                    <span className="font-bold text-[14px]">See Photo</span>
+                                </div>
+                            </div>
+                        )}
+                    </Link>
+                 )}
+
+                 {/* Carousel Controls */}
+                 {post.media_urls && post.media_urls.length > 1 && (
+                     <>
+                         {currentImageIndex > 0 && (
+                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(prev => prev - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                 <ChevronLeft size={24} />
+                             </button>
+                         )}
+                         {currentImageIndex < post.media_urls.length - 1 && (
+                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(prev => prev + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                 <ChevronRight size={24} />
+                             </button>
+                         )}
+                         {/* Dots indicator */}
+                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/30 px-2 py-1 rounded-full">
+                             {post.media_urls.map((_, idx) => (
+                                 <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-blue-500' : 'bg-white/60'}`}></div>
+                             ))}
+                         </div>
+                     </>
+                 )}
               </div>
           )}
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="flex gap-2 flex-wrap mb-2">
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${badgeStyles[post.ai_status || 'pending']}`}>
                 {(post.ai_status || 'pending').toUpperCase()}
               </div>
+              {post.image_labels && post.image_labels.includes('disclosed_ai_content') && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/20 text-purple-400 border-purple-500/50">
+                      AI WATERMARK DETECTED
+                  </div>
+              )}
+              {post.image_labels && post.image_labels.includes('ai_generated_image') && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-red-500/20 text-red-400 border-red-500/50">
+                      AI GENERATED
+                  </div>
+              )}
+              {isCurrentSensitive && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-yellow-500/20 text-yellow-500 border-yellow-500/50">
+                      18+ SENSITIVE CONTENT
+                  </div>
+              )}
           </div>
           
           <div className="flex justify-between items-center mt-3 text-gray-500 dark:text-gray-400 max-w-md w-full">
@@ -230,7 +358,9 @@ export function PostCard({ post, isRepost }) {
                 <span className="text-sm">{impressions > 0 ? impressions : ''}</span>
             </div>
             <div className="flex items-center gap-1 justify-end flex-1">
-                <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Bookmark size={18} /></button>
+                <button onClick={handleBookmark} className={`p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition ${isBookmarked ? 'text-blue-500' : ''}`}>
+                    <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
                 <button className="p-2 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition"><Upload size={18} /></button>
             </div>
           </div>
@@ -238,8 +368,42 @@ export function PostCard({ post, isRepost }) {
           {showComments && <CommentSection postId={post.id} />}
         </div>
       </div>
+
+      {showReportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={24} />
+              Report Post
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Please provide a reason or comment for reporting this post to the moderation team.
+            </p>
+            <textarea
+              className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-gray-700 rounded-xl p-3 text-gray-900 dark:text-white mb-4 focus:ring-2 focus:ring-red-500 outline-none resize-none"
+              rows={4}
+              placeholder="E.g., This post contains spam or misleading information..."
+              value={reportComment}
+              onChange={(e) => setReportComment(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+                onClick={() => setShowReportModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-md"
+                onClick={submitReport}
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }
-
-
