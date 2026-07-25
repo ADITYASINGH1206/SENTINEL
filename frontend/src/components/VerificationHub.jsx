@@ -380,7 +380,9 @@ export default function VerificationHub() {
                         <span className="text-xs font-mono text-gray-500 dark:text-gray-400">ID: {item.id}</span>
                       </div>
                       
-                      <p className="text-lg font-bold text-slate-900 dark:text-slate-100 my-4">"{item.text}"</p>
+                      <div className="bg-white dark:bg-zinc-950 p-4 rounded-lg border border-gray-200 dark:border-gray-800 my-4">
+                        <p className="text-base whitespace-pre-wrap text-slate-900 dark:text-slate-100">{item.text}</p>
+                      </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <button 

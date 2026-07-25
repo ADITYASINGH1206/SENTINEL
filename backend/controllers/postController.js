@@ -71,7 +71,7 @@ export const createPost = async (req, res) => {
         
         if (hasText) {
              promises.push(
-                  axios.post('http://127.0.0.1:5000/api/v1/analyze/text', { text: content }, {
+                  axios.post('http://127.0.0.1:5001/api/v1/analyze/text', { text: content }, {
                        headers: { 'Content-Type': 'application/json' },
                        timeout: 30000
                   })

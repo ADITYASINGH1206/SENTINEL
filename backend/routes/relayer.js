@@ -121,7 +121,7 @@ router.post('/content/vote', async (req, res) => {
     users[userAddress].totalVotes += 1;
     
     // Reward for participation
-    const rewardTokens = item.isReported ? 250 : 100;
+    const rewardTokens = 100;
     const rewardTrust = item.isReported ? 10 : 5;
     
     users[userAddress].pendingBalance += rewardTokens;
