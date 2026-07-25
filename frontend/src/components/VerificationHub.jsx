@@ -25,9 +25,9 @@ export default function VerificationHub() {
   const fetchContent = async () => {
     try {
       const [contentRes, reportedRes, lbRes] = await Promise.all([
-         fetch('http://localhost:8000/api/content'),
-         fetch('http://localhost:8000/api/content/reported'),
-         fetch('http://localhost:8000/api/leaderboard')
+         fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/content'),
+         fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/content/reported'),
+         fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/leaderboard')
       ]);
       
       const contentData = await contentRes.json();
@@ -61,7 +61,7 @@ export default function VerificationHub() {
 
     setVerifyingId(contentId);
     try {
-      const res = await fetch('http://localhost:8000/api/content/vote', {
+      const res = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/content/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account, contentId, vote: voteType })
@@ -110,7 +110,7 @@ export default function VerificationHub() {
     
     setIsClaiming(true);
     try {
-      const response = await fetch('http://localhost:8000/api/claim-tokens', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/claim-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account })

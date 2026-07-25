@@ -123,7 +123,7 @@ export const Web3Provider = ({ children }) => {
         setClaimStatus("Processing Gasless Airdrop...");
         setClaimTxHash(null);
         try {
-            const response = await fetch('http://localhost:8000/api/airdrop', {
+            const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/airdrop', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userAddress: account })

@@ -31,7 +31,7 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       // 1. Fetch Posts
-      const postsRes = await fetch('http://localhost:8000/api/v1/posts');
+      const postsRes = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1/posts');
       const postsData = await postsRes.json();
       if (postsData.success) {
         setPosts(postsData.posts);
@@ -39,7 +39,7 @@ export default function Dashboard() {
 
       // 2. Fetch User Stats from Leaderboard
       if (account) {
-        const lbRes = await fetch('http://localhost:8000/api/leaderboard');
+        const lbRes = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/leaderboard');
         const lbData = await lbRes.json();
         if (lbData.success) {
           const userStat = lbData.leaderboard.find(u => u.address.toLowerCase() === account.toLowerCase());
@@ -69,7 +69,7 @@ export default function Dashboard() {
     setVerifyingId(postId);
 
     try {
-      const response = await fetch('http://localhost:8000/api/verify-content', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/verify-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account, postId, userVote })
@@ -102,7 +102,7 @@ export default function Dashboard() {
     setIsClaiming(true);
     try {
       // Simulate API call to relay batch claim
-      const response = await fetch('http://localhost:8000/api/claim-tokens', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/claim-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userAddress: account })
